@@ -20,6 +20,8 @@ dependencies:
 
   # State management and dependency injection
   flutter_riverpod: ^2.6.1  # Latest stable, Dart 3 compatible :contentReference[oaicite:1]{index=1}
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.0
 
   # Add more UI/helper packages as your app evolves
   # e.g., google_maps_flutter, fl_chart, geolocator, http, etc.

@@ -6,7 +6,7 @@ import 'pages/lost_person_form.dart';
 import 'pages/medical_help_page.dart';
 import 'pages/emergency_exit_page.dart';
 import 'pages/feedback_page.dart';
-import 'pages/heatmap_page.dart';
+import 'pages/live_map_page.dart';
 import 'pages/alerts_page.dart';
 
 void main() => runApp(const CrowdBuddyApp());
@@ -36,7 +36,7 @@ class CrowdBuddyApp extends StatelessWidget {
         MedicalHelpPage.route: (_) => const MedicalHelpPage(),
         EmergencyExitPage.route: (_) => const EmergencyExitPage(),
         FeedbackPage.route: (_) => const FeedbackPage(),
-        HeatmapPage.route: (_) => const HeatmapPage(),
+        LiveMapPage.route: (_) => const LiveMapPage(),
         AlertsPage.route: (_) => const AlertsPage(),
       },
     );

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "661979728205",
+    "project_id": "crowdbuddy-b608f",
+    "storage_bucket": "crowdbuddy-b608f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:661979728205:android:19a1f011be3b2e042c8f04",
+        "android_client_info": {
+          "package_name": "com.example.crowd_buddy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClLe9jNLy1yZcZNVqeRG2yg5IgGvBiu-s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

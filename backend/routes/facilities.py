@@ -7,9 +7,6 @@ from database import database
 
 router = APIRouter(prefix="/facilities", tags=["Facilities"])
 
-# Collections
-facilities_collection = database["facilities"]
-
 def generate_facility_id() -> str:
     """Generate unique facility ID"""
     return f"FAC{secrets.token_hex(6).upper()}"
@@ -24,7 +21,7 @@ async def create_facility(facility: FacilityCreate):
     if facility_dict.get("location"):
         facility_dict["location"] = dict(facility_dict["location"])
     
-    await facilities_collection.insert_one(facility_dict)
+    await database["facilities"].insert_one(facility_dict)
     
     return Facility(**{k: v for k, v in facility_dict.items() if k != "_id"})
 
@@ -43,13 +40,13 @@ async def get_facilities(
     if available is not None:
         query["available"] = available
     
-    facilities = await facilities_collection.find(query).to_list(1000)
+    facilities = await database["facilities"].find(query).to_list(1000)
     return [Facility(**{k: v for k, v in facility.items() if k != "_id"}) for facility in facilities]
 
 @router.get("/{facility_id}", response_model=Facility)
 async def get_facility(facility_id: str):
     """Get facility by ID"""
-    facility = await facilities_collection.find_one({"id": facility_id})
+    facility = await database["facilities"].find_one({"id": facility_id})
     
     if not facility:
         raise HTTPException(
@@ -62,7 +59,7 @@ async def get_facility(facility_id: str):
 @router.patch("/{facility_id}/availability")
 async def update_facility_availability(facility_id: str, available: bool):
     """Update facility availability status"""
-    facility = await facilities_collection.find_one({"id": facility_id})
+    facility = await database["facilities"].find_one({"id": facility_id})
     
     if not facility:
         raise HTTPException(
@@ -70,7 +67,7 @@ async def update_facility_availability(facility_id: str, available: bool):
             detail="Facility not found"
         )
     
-    await facilities_collection.update_one(
+    await database["facilities"].update_one(
         {"id": facility_id},
         {"$set": {"available": available}}
     )
@@ -80,7 +77,7 @@ async def update_facility_availability(facility_id: str, available: bool):
 @router.put("/{facility_id}", response_model=Facility)
 async def update_facility(facility_id: str, facility_update: FacilityCreate):
     """Update a facility"""
-    facility = await facilities_collection.find_one({"id": facility_id})
+    facility = await database["facilities"].find_one({"id": facility_id})
     
     if not facility:
         raise HTTPException(
@@ -94,18 +91,18 @@ async def update_facility(facility_id: str, facility_update: FacilityCreate):
     if update_dict.get("location"):
         update_dict["location"] = dict(update_dict["location"])
     
-    await facilities_collection.update_one(
+    await database["facilities"].update_one(
         {"id": facility_id},
         {"$set": update_dict}
     )
     
-    updated_facility = await facilities_collection.find_one({"id": facility_id})
+    updated_facility = await database["facilities"].find_one({"id": facility_id})
     return Facility(**{k: v for k, v in updated_facility.items() if k != "_id"})
 
 @router.delete("/{facility_id}")
 async def delete_facility(facility_id: str):
     """Delete a facility"""
-    result = await facilities_collection.delete_one({"id": facility_id})
+    result = await database["facilities"].delete_one({"id": facility_id})
     
     if result.deleted_count == 0:
         raise HTTPException(
@@ -128,7 +125,7 @@ async def find_nearby_facilities(
         query["type"] = facility_type
     
     # Get all facilities (in production, use geospatial queries)
-    facilities = await facilities_collection.find(query).to_list(1000)
+    facilities = await database["facilities"].find(query).to_list(1000)
     
     # Simple distance calculation (can be improved with geospatial indexing)
     import math

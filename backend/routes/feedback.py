@@ -8,9 +8,6 @@ from database import database
 
 router = APIRouter(prefix="/feedback", tags=["Feedback"])
 
-# Collections
-feedback_collection = database["feedback"]
-
 def generate_feedback_id() -> str:
     """Generate unique feedback ID"""
     return f"FB{secrets.token_hex(6).upper()}"
@@ -46,7 +43,7 @@ async def create_feedback(feedback: FeedbackCreate):
     # Perform sentiment analysis
     feedback_dict["ai_sentiment"] = analyze_sentiment(feedback_dict.get("comments"))
     
-    await feedback_collection.insert_one(feedback_dict)
+    await database["feedback"].insert_one(feedback_dict)
     
     return Feedback(**{k: v for k, v in feedback_dict.items() if k != "_id"})
 
@@ -68,13 +65,13 @@ async def get_all_feedback(
     if sentiment:
         query["ai_sentiment"] = sentiment
     
-    feedbacks = await feedback_collection.find(query).sort("submitted_at", -1).to_list(1000)
+    feedbacks = await database["feedback"].find(query).sort("submitted_at", -1).to_list(1000)
     return [Feedback(**{k: v for k, v in feedback.items() if k != "_id"}) for feedback in feedbacks]
 
 @router.get("/{feedback_id}", response_model=Feedback)
 async def get_feedback(feedback_id: str):
     """Get feedback by ID"""
-    feedback = await feedback_collection.find_one({"id": feedback_id})
+    feedback = await database["feedback"].find_one({"id": feedback_id})
     
     if not feedback:
         raise HTTPException(
@@ -100,7 +97,7 @@ async def get_feedback_stats(event_id: str):
         }
     ]
     
-    result = await feedback_collection.aggregate(pipeline).to_list(1)
+    result = await database["feedback"].aggregate(pipeline).to_list(1)
     
     if not result:
         return {
@@ -132,7 +129,7 @@ async def get_feedback_stats(event_id: str):
 @router.get("/event/{event_id}/recent", response_model=List[Feedback])
 async def get_recent_feedback(event_id: str, limit: int = 10):
     """Get recent feedback for an event"""
-    feedbacks = await feedback_collection.find(
+    feedbacks = await database["feedback"].find(
         {"event_id": event_id}
     ).sort("submitted_at", -1).limit(limit).to_list(limit)
     

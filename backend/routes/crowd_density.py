@@ -9,9 +9,6 @@ from database import database
 
 router = APIRouter(prefix="/crowd-density", tags=["Crowd Density"])
 
-# Collections
-crowd_density_collection = database["crowd_density"]
-
 def generate_density_id() -> str:
     """Generate unique density record ID"""
     return f"CD{secrets.token_hex(6).upper()}"
@@ -48,7 +45,7 @@ async def create_density_record(density: CrowdDensityCreate):
     # Calculate density metrics
     density_dict = calculate_density(density_dict)
     
-    await crowd_density_collection.insert_one(density_dict)
+    await database["crowd_density"].insert_one(density_dict)
     
     return CrowdDensity(**{k: v for k, v in density_dict.items() if k != "_id"})
 
@@ -67,13 +64,13 @@ async def get_density_records(
     if density_level:
         query["density_level"] = density_level
     
-    records = await crowd_density_collection.find(query).sort("timestamp", -1).to_list(1000)
+    records = await database["crowd_density"].find(query).sort("timestamp", -1).to_list(1000)
     return [CrowdDensity(**{k: v for k, v in record.items() if k != "_id"}) for record in records]
 
 @router.get("/{density_id}", response_model=CrowdDensity)
 async def get_density_record(density_id: str):
     """Get density record by ID"""
-    record = await crowd_density_collection.find_one({"id": density_id})
+    record = await database["crowd_density"].find_one({"id": density_id})
     
     if not record:
         raise HTTPException(
@@ -86,7 +83,7 @@ async def get_density_record(density_id: str):
 @router.get("/event/{event_id}/latest", response_model=List[CrowdDensity])
 async def get_latest_density_by_event(event_id: str, limit: int = 10):
     """Get latest density records for an event"""
-    records = await crowd_density_collection.find(
+    records = await database["crowd_density"].find(
         {"event_id": event_id}
     ).sort("timestamp", -1).limit(limit).to_list(limit)
     
@@ -106,7 +103,7 @@ async def get_event_areas_density(event_id: str):
         }
     ]
     
-    results = await crowd_density_collection.aggregate(pipeline).to_list(100)
+    results = await database["crowd_density"].aggregate(pipeline).to_list(100)
     
     areas_density = []
     for result in results:

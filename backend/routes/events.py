@@ -8,8 +8,8 @@ from database import database
 
 router = APIRouter(prefix="/events", tags=["Events"])
 
-# Collections
-events_collection = database["events"]
+# Note: access collections from `database[...]` at runtime to avoid import-time
+# Mongo client creation before the application startup initializes the DB.
 
 def generate_event_id() -> str:
     """Generate unique event ID"""
@@ -34,7 +34,7 @@ async def create_event(event: EventCreate):
             for area in event_dict["areas"]
         ]
     
-    await events_collection.insert_one(event_dict)
+    await database["events"].insert_one(event_dict)
     
     return Event(**{k: v for k, v in event_dict.items() if k != "_id"})
 
@@ -50,13 +50,13 @@ async def get_events(
     if organizer_id:
         query["organizer_id"] = organizer_id
     
-    events = await events_collection.find(query).to_list(1000)
+    events = await database["events"].find(query).to_list(1000)
     return [Event(**{k: v for k, v in event.items() if k != "_id"}) for event in events]
 
 @router.get("/{event_id}", response_model=Event)
 async def get_event(event_id: str):
     """Get event by ID"""
-    event = await events_collection.find_one({"id": event_id})
+    event = await database["events"].find_one({"id": event_id})
     
     if not event:
         raise HTTPException(
@@ -69,7 +69,7 @@ async def get_event(event_id: str):
 @router.put("/{event_id}", response_model=Event)
 async def update_event(event_id: str, event_update: EventCreate):
     """Update an event"""
-    event = await events_collection.find_one({"id": event_id})
+    event = await database["events"].find_one({"id": event_id})
     
     if not event:
         raise HTTPException(
@@ -90,12 +90,12 @@ async def update_event(event_id: str, event_update: EventCreate):
             for area in update_dict["areas"]
         ]
     
-    await events_collection.update_one(
+    await database["events"].update_one(
         {"id": event_id},
         {"$set": update_dict}
     )
     
-    updated_event = await events_collection.find_one({"id": event_id})
+    updated_event = await database["events"].find_one({"id": event_id})
     return Event(**{k: v for k, v in updated_event.items() if k != "_id"})
 
 @router.patch("/{event_id}/status")
@@ -107,14 +107,14 @@ async def update_event_status(event_id: str, status: str):
             detail="Invalid status. Must be: upcoming, live, or completed"
         )
     
-    event = await events_collection.find_one({"id": event_id})
+    event = await database["events"].find_one({"id": event_id})
     if not event:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Event not found"
         )
     
-    await events_collection.update_one(
+    await database["events"].update_one(
         {"id": event_id},
         {"$set": {"status": status}}
     )
@@ -124,7 +124,7 @@ async def update_event_status(event_id: str, status: str):
 @router.delete("/{event_id}")
 async def delete_event(event_id: str):
     """Delete an event"""
-    result = await events_collection.delete_one({"id": event_id})
+    result = await database["events"].delete_one({"id": event_id})
     
     if result.deleted_count == 0:
         raise HTTPException(
@@ -133,3 +133,68 @@ async def delete_event(event_id: str):
         )
     
     return {"message": "Event deleted successfully", "event_id": event_id}
+
+
+@router.get("/{event_id}/zones")
+async def get_event_zones(event_id: str):
+    """Return zones for an event with latest counts and density level formatted for frontend.
+
+    Response: list of {id, name, count, capacity, level}
+    - capacity: if area.definition includes capacity use it; otherwise split event.capacity evenly.
+    - count: from latest crowd_density record for that event and area_name, 0 if none.
+    - level: normalized to frontend values: Safe->safe, Moderate->moderate, Risky->risky, Overcrowded->critical
+    """
+    event = await database["events"].find_one({"id": event_id})
+    if not event:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+
+    areas = event.get('areas', []) or []
+    # normalize event-level capacity fallback
+    total_capacity = int(event.get('capacity') or 0)
+    n_areas = len(areas) if areas else 1
+
+    zones = []
+    for idx, area in enumerate(areas):
+        name = area.get('name') if isinstance(area, dict) else getattr(area, 'name', str(area))
+        # capacity fallback: if area has 'capacity' use it, else equal split
+        cap = int(area.get('capacity')) if isinstance(area, dict) and area.get('capacity') else (total_capacity // n_areas if n_areas else total_capacity)
+
+        # find latest density record for this event+area
+        record = await database['crowd_density'].find_one({"event_id": event_id, "area_name": name}, sort=[("timestamp", -1)])
+        person_count = int(record.get('person_count')) if record and record.get('person_count') is not None else 0
+        density_level_raw = record.get('density_level') if record else None
+
+        # map density level to frontend-friendly lowercase levels
+        level_map = {
+            'Safe': 'safe',
+            'Moderate': 'moderate',
+            'Risky': 'risky',
+            'Overcrowded': 'critical'
+        }
+        level = level_map.get(density_level_raw, 'safe')
+
+        zones.append({
+            'id': f"{event_id}_{idx+1}",
+            'name': name,
+            'count': person_count,
+            'capacity': cap,
+            'level': level
+        })
+
+    # If no areas defined, return a single summary zone using event capacity and aggregated latest densities
+    if not zones:
+        # aggregated latest records for the event
+        recs = await database['crowd_density'].find({'event_id': event_id}).sort('timestamp', -1).to_list(100)
+        total_count = sum(int(r.get('person_count', 0)) for r in recs) if recs else 0
+        # classify summary level using same thresholds
+        people_per_m2 = None
+        summary_level = 'safe'
+        zones = [{
+            'id': f"{event_id}_1",
+            'name': event.get('name', 'Event'),
+            'count': total_count,
+            'capacity': total_capacity,
+            'level': summary_level
+        }]
+
+    return zones

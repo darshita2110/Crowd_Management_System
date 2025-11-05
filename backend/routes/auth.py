@@ -9,9 +9,6 @@ from database import database
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-# Collections
-users_collection = database["users"]
-
 def hash_password(password: str) -> str:
     """Simple password hashing (use bcrypt in production)"""
     return hashlib.sha256(password.encode()).hexdigest()
@@ -24,7 +21,7 @@ def generate_user_id() -> str:
 async def register_user(user: UserCreate):
     """Register a new user"""
     # Check if user already exists
-    existing_user = await users_collection.find_one({"email": user.email})
+    existing_user = await database["users"].find_one({"email": user.email})
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -41,7 +38,7 @@ async def register_user(user: UserCreate):
     if user_dict.get("location"):
         user_dict["location"] = dict(user_dict["location"])
     
-    await users_collection.insert_one(user_dict)
+    await database["users"].insert_one(user_dict)
     
     # Return user response without password
     return UserResponse(**{k: v for k, v in user_dict.items() if k != "password_hash"})
@@ -49,7 +46,7 @@ async def register_user(user: UserCreate):
 @router.post("/login")
 async def login_user(credentials: UserLogin):
     """Login user and return user info"""
-    user = await users_collection.find_one({"email": credentials.email})
+    user = await database["users"].find_one({"email": credentials.email})
     
     if not user or user.get("password_hash") != hash_password(credentials.password):
         raise HTTPException(
@@ -71,13 +68,13 @@ async def get_all_users(role: str = None):
     if role:
         query["role"] = role
     
-    users = await users_collection.find(query).to_list(1000)
+    users = await database["users"].find(query).to_list(1000)
     return [UserResponse(**{k: v for k, v in user.items() if k not in ["password_hash", "_id"]}) for user in users]
 
 @router.get("/users/{user_id}", response_model=UserResponse)
 async def get_user(user_id: str):
     """Get user by ID"""
-    user = await users_collection.find_one({"id": user_id})
+    user = await database["users"].find_one({"id": user_id})
     
     if not user:
         raise HTTPException(

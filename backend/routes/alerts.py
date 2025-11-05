@@ -8,10 +8,6 @@ from database import database
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
-# Collections
-alerts_collection = database["alerts"]
-weather_alerts_collection = database["weather_alerts"]
-
 def generate_alert_id() -> str:
     """Generate unique alert ID"""
     return f"ALT{secrets.token_hex(6).upper()}"
@@ -30,7 +26,7 @@ async def create_alert(alert: AlertCreate):
     alert_dict["is_active"] = True
     alert_dict["created_at"] = datetime.utcnow()
     
-    await alerts_collection.insert_one(alert_dict)
+    await database["alerts"].insert_one(alert_dict)
     
     return Alert(**{k: v for k, v in alert_dict.items() if k != "_id"})
 
@@ -52,13 +48,13 @@ async def get_alerts(
     if is_active is not None:
         query["is_active"] = is_active
     
-    alerts = await alerts_collection.find(query).sort("created_at", -1).to_list(1000)
+    alerts = await database["alerts"].find(query).sort("created_at", -1).to_list(1000)
     return [Alert(**{k: v for k, v in alert.items() if k != "_id"}) for alert in alerts]
 
 @router.get("/{alert_id}", response_model=Alert)
 async def get_alert(alert_id: str):
     """Get alert by ID"""
-    alert = await alerts_collection.find_one({"id": alert_id})
+    alert = await database["alerts"].find_one({"id": alert_id})
     
     if not alert:
         raise HTTPException(
@@ -71,7 +67,7 @@ async def get_alert(alert_id: str):
 @router.patch("/{alert_id}/deactivate")
 async def deactivate_alert(alert_id: str):
     """Deactivate an alert"""
-    alert = await alerts_collection.find_one({"id": alert_id})
+    alert = await database["alerts"].find_one({"id": alert_id})
     
     if not alert:
         raise HTTPException(
@@ -79,7 +75,7 @@ async def deactivate_alert(alert_id: str):
             detail="Alert not found"
         )
     
-    await alerts_collection.update_one(
+    await database["alerts"].update_one(
         {"id": alert_id},
         {"$set": {"is_active": False}}
     )
@@ -89,7 +85,7 @@ async def deactivate_alert(alert_id: str):
 @router.delete("/{alert_id}")
 async def delete_alert(alert_id: str):
     """Delete an alert"""
-    result = await alerts_collection.delete_one({"id": alert_id})
+    result = await database["alerts"].delete_one({"id": alert_id})
     
     if result.deleted_count == 0:
         raise HTTPException(
@@ -108,7 +104,7 @@ async def create_weather_alert(weather_alert: WeatherAlertCreate):
     alert_dict["id"] = generate_weather_alert_id()
     alert_dict["timestamp"] = datetime.utcnow()
     
-    await weather_alerts_collection.insert_one(alert_dict)
+    await database["weather_alerts"].insert_one(alert_dict)
     
     return WeatherAlert(**{k: v for k, v in alert_dict.items() if k != "_id"})
 
@@ -119,13 +115,13 @@ async def get_weather_alerts(event_id: Optional[str] = None):
     if event_id:
         query["event_id"] = event_id
     
-    alerts = await weather_alerts_collection.find(query).sort("timestamp", -1).to_list(1000)
+    alerts = await database["weather_alerts"].find(query).sort("timestamp", -1).to_list(1000)
     return [WeatherAlert(**{k: v for k, v in alert.items() if k != "_id"}) for alert in alerts]
 
 @router.get("/weather/{alert_id}", response_model=WeatherAlert)
 async def get_weather_alert(alert_id: str):
     """Get weather alert by ID"""
-    alert = await weather_alerts_collection.find_one({"id": alert_id})
+    alert = await database["weather_alerts"].find_one({"id": alert_id})
     
     if not alert:
         raise HTTPException(
@@ -138,7 +134,7 @@ async def get_weather_alert(alert_id: str):
 @router.get("/weather/event/{event_id}/latest", response_model=WeatherAlert)
 async def get_latest_weather_alert(event_id: str):
     """Get latest weather alert for an event"""
-    alert = await weather_alerts_collection.find_one(
+    alert = await database["weather_alerts"].find_one(
         {"event_id": event_id},
         sort=[("timestamp", -1)]
     )

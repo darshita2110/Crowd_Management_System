@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from routes import auth, events, crowd_density, medical_emergencies, lost_person, feedback, facilities, alerts
+from routes import auth, events, crowd_density, medical_emergencies, lost_person, feedback, facilities, alerts, inference
 from database import init_db
 
 @asynccontextmanager
@@ -40,6 +40,7 @@ app.include_router(lost_person.router)
 app.include_router(feedback.router)
 app.include_router(facilities.router)
 app.include_router(alerts.router)
+app.include_router(inference.router)
 
 @app.get("/", tags=["Root"])
 def home():

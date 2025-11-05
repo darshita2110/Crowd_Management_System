@@ -19,8 +19,27 @@ TEST_EVENT_END = (datetime.now() + timedelta(days=30, hours=5)).isoformat()
 # Fixtures
 @pytest.fixture
 async def async_client():
-    """Create async test client"""
-    async with AsyncClient(app=app, base_url=BASE_URL) as client:
+    """Create async test client without triggering lifespan"""
+    # Use app without lifespan to avoid event loop conflicts
+    # The database is already initialized in conftest.py setup_test_database fixture
+    from main import app as original_app
+    from fastapi import FastAPI
+    
+    # Create a test app without lifespan
+    test_app = FastAPI(
+        title=original_app.title,
+        description=original_app.description,
+        version=original_app.version,
+    )
+    
+    # Copy routes from original app
+    test_app.router = original_app.router
+    
+    # Copy middleware
+    test_app.user_middleware = original_app.user_middleware
+    test_app.middleware_stack = original_app.middleware_stack
+    
+    async with AsyncClient(app=test_app, base_url=BASE_URL) as client:
         yield client
 
 
@@ -730,6 +749,48 @@ class TestFeedback:
         assert "average_rating" in stats
         assert "rating_distribution" in stats
         assert "sentiment_distribution" in stats
+
+
+# ============================================================================
+# INFERENCE UPLOAD TEST
+# ============================================================================
+
+class TestInferenceUpload:
+    """Test the /inference/count upload endpoint using a fake LWCC to avoid heavy deps."""
+
+    @pytest.mark.asyncio
+    async def test_upload_image_inference(self, async_client):
+        import sys, types
+        from pathlib import Path
+
+        # inject fake lwcc module so endpoint returns deterministic count
+        fake = types.SimpleNamespace()
+
+        class LWCC:
+            @staticmethod
+            def get_count(paths, **kwargs):
+                return 5
+
+        fake.LWCC = LWCC
+        sys.modules['lwcc'] = fake
+
+        # find a sample image from the repo top-level samplecrowd folder
+        repo_root = Path(__file__).resolve().parents[1]
+        sample_dir = repo_root / 'samplecrowd'
+        imgs = sorted([p for p in sample_dir.iterdir() if p.suffix.lower() in ('.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff')])
+        assert imgs, f'No sample images found in {sample_dir}'
+        img = imgs[0]
+
+        # perform multipart upload
+        with open(img, 'rb') as fh:
+            files = {'file': (img.name, fh, 'image/jpeg')}
+            response = await async_client.post('/inference/count', files=files)
+
+        assert response.status_code == 200, f'Unexpected status: {response.status_code} {response.text}'
+        data = response.json()
+        assert 'person_count' in data
+        assert isinstance(data['person_count'], int)
+        assert data['person_count'] == 5
 
 
 # ============================================================================

@@ -8,9 +8,6 @@ from database import database
 
 router = APIRouter(prefix="/medical-emergencies", tags=["Medical Emergencies"])
 
-# Collections
-medical_collection = database["medical_emergencies"]
-
 def generate_emergency_id() -> str:
     """Generate unique emergency ID"""
     return f"MED{secrets.token_hex(6).upper()}"
@@ -23,7 +20,7 @@ async def create_emergency(emergency: MedicalEmergencyCreate):
     emergency_dict["status"] = "reported"
     emergency_dict["reported_at"] = datetime.utcnow()
     
-    await medical_collection.insert_one(emergency_dict)
+    await database["medical_emergencies"].insert_one(emergency_dict)
     
     return MedicalEmergency(**{k: v for k, v in emergency_dict.items() if k != "_id"})
 
@@ -45,13 +42,13 @@ async def get_emergencies(
     if emergency_type:
         query["emergency_type"] = emergency_type
     
-    emergencies = await medical_collection.find(query).sort("reported_at", -1).to_list(1000)
+    emergencies = await database["medical_emergencies"].find(query).sort("reported_at", -1).to_list(1000)
     return [MedicalEmergency(**{k: v for k, v in emergency.items() if k != "_id"}) for emergency in emergencies]
 
 @router.get("/{emergency_id}", response_model=MedicalEmergency)
 async def get_emergency(emergency_id: str):
     """Get emergency by ID"""
-    emergency = await medical_collection.find_one({"id": emergency_id})
+    emergency = await database["medical_emergencies"].find_one({"id": emergency_id})
     
     if not emergency:
         raise HTTPException(
@@ -76,7 +73,7 @@ async def update_emergency_status(
             detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
         )
     
-    emergency = await medical_collection.find_one({"id": emergency_id})
+    emergency = await database["medical_emergencies"].find_one({"id": emergency_id})
     if not emergency:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -89,12 +86,12 @@ async def update_emergency_status(
     if response_time is not None:
         update_data["response_time"] = response_time
     
-    await medical_collection.update_one(
+    await database["medical_emergencies"].update_one(
         {"id": emergency_id},
         {"$set": update_data}
     )
     
-    updated_emergency = await medical_collection.find_one({"id": emergency_id})
+    updated_emergency = await database["medical_emergencies"].find_one({"id": emergency_id})
     return MedicalEmergency(**{k: v for k, v in updated_emergency.items() if k != "_id"})
 
 @router.get("/stats/event/{event_id}")
@@ -119,7 +116,7 @@ async def get_emergency_stats(event_id: str):
         }
     ]
     
-    result = await medical_collection.aggregate(pipeline).to_list(1)
+    result = await database["medical_emergencies"].aggregate(pipeline).to_list(1)
     
     if not result:
         return {

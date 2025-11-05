@@ -1730,6 +1730,77 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "Inference",
+			"item": [
+				{
+					"name": "Count People (Upload Image)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "multipart/form-data"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": ""
+								},
+								{
+									"key": "save_record",
+									"type": "text",
+									"value": "false"
+								},
+								{
+									"key": "radius_m",
+									"type": "text",
+									"value": ""
+								},
+								{
+									"key": "event_id",
+									"type": "text",
+									"value": ""
+								},
+								{
+									"key": "area_name",
+									"type": "text",
+									"value": ""
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/inference/count",
+							"host": ["{{base_url}}"],
+							"path": ["inference", "count"]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response has person_count as integer\", function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json).to.have.property('person_count');",
+									"    pm.expect(_.isNumber(json.person_count)).to.be.true;",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
 		}
 	],
 	"variable": [

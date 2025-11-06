@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
+import '../utils/constants.dart';
 
 class SignupPage extends StatefulWidget {
   static const route = '/signup';
@@ -13,9 +14,10 @@ class _SignupPageState extends State<SignupPage> with SingleTickerProviderStateM
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _auth = FirebaseAuth.instance;
+  final _authService = AuthService();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -40,6 +42,7 @@ class _SignupPageState extends State<SignupPage> with SingleTickerProviderStateM
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _animationController.dispose();
@@ -52,56 +55,48 @@ class _SignupPageState extends State<SignupPage> with SingleTickerProviderStateM
     setState(() => _isLoading = true);
 
     try {
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      // Register with both Firebase and backend API
+      final result = await _authService.registerUser(
+        name: _nameController.text.trim(),
         email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
         password: _passwordController.text,
       );
-
-      // Update display name
-      await userCredential.user?.updateDisplayName(_nameController.text.trim());
-
+      print(Constants.baseUrl);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: const [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Text('Account created successfully!'),
-              ],
+        if (result['success']) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: const [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(child: Text('Account created successfully!')),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-        Navigator.pushReplacementNamed(context, '/home');
-      }
-    } on FirebaseAuthException catch (e) {
-      String message = 'An error occurred';
-      if (e.code == 'weak-password') {
-        message = 'The password is too weak';
-      } else if (e.code == 'email-already-in-use') {
-        message = 'An account already exists for this email';
-      } else if (e.code == 'invalid-email') {
-        message = 'Invalid email address';
-      }
+          );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(child: Text(message)),
-              ],
+          // Navigation will be handled by AuthWrapper since user is now logged in
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(result['message'])),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
+          );
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -191,191 +186,120 @@ class _SignupPageState extends State<SignupPage> with SingleTickerProviderStateM
                     const SizedBox(height: 32),
 
                     // Name Field
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        gradient: LinearGradient(
-                          colors: isDark
-                              ? [
-                            Colors.teal.shade900.withOpacity(0.2),
-                            Colors.cyan.shade900.withOpacity(0.1),
-                          ]
-                              : [
-                            Colors.teal.shade50,
-                            Colors.cyan.shade50,
-                          ],
-                        ),
-                      ),
-                      child: TextFormField(
-                        controller: _nameController,
-                        decoration: InputDecoration(
-                          labelText: 'Full Name',
-                          hintText: 'Enter your full name',
-                          prefixIcon: const Icon(Icons.person_outline, color: Colors.teal),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: Colors.transparent,
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your name';
-                          }
-                          return null;
-                        },
-                      ),
+                    _buildTextField(
+                      controller: _nameController,
+                      label: 'Full Name',
+                      hint: 'Enter your full name',
+                      icon: Icons.person_outline,
+                      isDark: isDark,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your name';
+                        }
+                        return null;
+                      },
                     ),
 
                     const SizedBox(height: 16),
 
                     // Email Field
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        gradient: LinearGradient(
-                          colors: isDark
-                              ? [
-                            Colors.teal.shade900.withOpacity(0.2),
-                            Colors.cyan.shade900.withOpacity(0.1),
-                          ]
-                              : [
-                            Colors.teal.shade50,
-                            Colors.cyan.shade50,
-                          ],
-                        ),
-                      ),
-                      child: TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: InputDecoration(
-                          labelText: 'Email',
-                          hintText: 'Enter your email',
-                          prefixIcon: const Icon(Icons.email_outlined, color: Colors.teal),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: Colors.transparent,
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your email';
-                          }
-                          if (!value.contains('@')) {
-                            return 'Please enter a valid email';
-                          }
-                          return null;
-                        },
-                      ),
+                    _buildTextField(
+                      controller: _emailController,
+                      label: 'Email',
+                      hint: 'Enter your email',
+                      icon: Icons.email_outlined,
+                      keyboardType: TextInputType.emailAddress,
+                      isDark: isDark,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your email';
+                        }
+                        if (!value.contains('@')) {
+                          return 'Please enter a valid email';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Phone Field
+                    _buildTextField(
+                      controller: _phoneController,
+                      label: 'Phone Number',
+                      hint: 'Enter your phone number',
+                      icon: Icons.phone_outlined,
+                      keyboardType: TextInputType.phone,
+                      isDark: isDark,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your phone number';
+                        }
+                        if (value.length < 10) {
+                          return 'Please enter a valid phone number';
+                        }
+                        return null;
+                      },
                     ),
 
                     const SizedBox(height: 16),
 
                     // Password Field
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        gradient: LinearGradient(
-                          colors: isDark
-                              ? [
-                            Colors.teal.shade900.withOpacity(0.2),
-                            Colors.cyan.shade900.withOpacity(0.1),
-                          ]
-                              : [
-                            Colors.teal.shade50,
-                            Colors.cyan.shade50,
-                          ],
+                    _buildTextField(
+                      controller: _passwordController,
+                      label: 'Password',
+                      hint: 'Enter your password',
+                      icon: Icons.lock_outline,
+                      obscureText: _obscurePassword,
+                      isDark: isDark,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          color: Colors.teal,
                         ),
-                      ),
-                      child: TextFormField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          hintText: 'Enter your password',
-                          prefixIcon: const Icon(Icons.lock_outline, color: Colors.teal),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                              color: Colors.teal,
-                            ),
-                            onPressed: () {
-                              setState(() => _obscurePassword = !_obscurePassword);
-                            },
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: Colors.transparent,
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your password';
-                          }
-                          if (value.length < 6) {
-                            return 'Password must be at least 6 characters';
-                          }
-                          return null;
+                        onPressed: () {
+                          setState(() => _obscurePassword = !_obscurePassword);
                         },
                       ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your password';
+                        }
+                        if (value.length < 6) {
+                          return 'Password must be at least 6 characters';
+                        }
+                        return null;
+                      },
                     ),
 
                     const SizedBox(height: 16),
 
                     // Confirm Password Field
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        gradient: LinearGradient(
-                          colors: isDark
-                              ? [
-                            Colors.teal.shade900.withOpacity(0.2),
-                            Colors.cyan.shade900.withOpacity(0.1),
-                          ]
-                              : [
-                            Colors.teal.shade50,
-                            Colors.cyan.shade50,
-                          ],
+                    _buildTextField(
+                      controller: _confirmPasswordController,
+                      label: 'Confirm Password',
+                      hint: 'Re-enter your password',
+                      icon: Icons.lock_outline,
+                      obscureText: _obscureConfirmPassword,
+                      isDark: isDark,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                          color: Colors.teal,
                         ),
-                      ),
-                      child: TextFormField(
-                        controller: _confirmPasswordController,
-                        obscureText: _obscureConfirmPassword,
-                        decoration: InputDecoration(
-                          labelText: 'Confirm Password',
-                          hintText: 'Re-enter your password',
-                          prefixIcon: const Icon(Icons.lock_outline, color: Colors.teal),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                              color: Colors.teal,
-                            ),
-                            onPressed: () {
-                              setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
-                            },
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: Colors.transparent,
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please confirm your password';
-                          }
-                          if (value != _passwordController.text) {
-                            return 'Passwords do not match';
-                          }
-                          return null;
+                        onPressed: () {
+                          setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
                         },
                       ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please confirm your password';
+                        }
+                        if (value != _passwordController.text) {
+                          return 'Passwords do not match';
+                        }
+                        return null;
+                      },
                     ),
 
                     const SizedBox(height: 32),
@@ -458,6 +382,53 @@ class _SignupPageState extends State<SignupPage> with SingleTickerProviderStateM
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    required bool isDark,
+    TextInputType? keyboardType,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    String? Function(String?)? validator,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: isDark
+              ? [
+            Colors.teal.shade900.withOpacity(0.2),
+            Colors.cyan.shade900.withOpacity(0.1),
+          ]
+              : [
+            Colors.teal.shade50,
+            Colors.cyan.shade50,
+          ],
+        ),
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        obscureText: obscureText,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          prefixIcon: Icon(icon, color: Colors.teal),
+          suffixIcon: suffixIcon,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.transparent,
+        ),
+        validator: validator,
       ),
     );
   }

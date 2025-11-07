@@ -14,6 +14,7 @@ import 'pages/emergency_exit_page.dart';
 import 'pages/feedback_page.dart';
 import 'pages/live_map_page.dart';
 import 'pages/alerts_page.dart';
+import 'pages/washrooms_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,6 +61,7 @@ class CrowdBuddyAppState extends State<CrowdBuddyApp> {
         FeedbackPage.route: (_) => const FeedbackPage(),
         LiveMapPage.route: (_) => const LiveMapPage(),
         AlertsPage.route: (_) => const AlertsPage(),
+        WashroomsPage.route: (_) => const WashroomsPage(),
       },
     );
   }

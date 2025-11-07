@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart'; // Needed for opening maps and dialer
 
 class MedicalHelpPage extends StatefulWidget {
   static const route = '/medical';
@@ -8,26 +9,7 @@ class MedicalHelpPage extends StatefulWidget {
   State<MedicalHelpPage> createState() => _MedicalHelpPageState();
 }
 
-class _MedicalHelpPageState extends State<MedicalHelpPage>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _pulseController;
-  bool _sosSent = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
-      vsync: this,
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
-  }
-
+class _MedicalHelpPageState extends State<MedicalHelpPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -77,172 +59,9 @@ class _MedicalHelpPageState extends State<MedicalHelpPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Info Card
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: isDark
-                            ? [
-                          Colors.red.shade900.withOpacity(0.3),
-                          Colors.pink.shade900.withOpacity(0.2),
-                        ]
-                            : [
-                          Colors.red.shade50,
-                          Colors.pink.shade50,
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.red.withOpacity(0.2),
-                          blurRadius: 15,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            Icons.info_outline,
-                            color: Colors.red.shade700,
-                            size: 28,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Text(
-                            'Emergency assistance will be sent to your current location',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // INFO CARD REMOVED
 
-                  const SizedBox(height: 24),
-
-                  // Location Card
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: isDark
-                            ? [
-                          Colors.teal.shade900.withOpacity(0.3),
-                          Colors.cyan.shade900.withOpacity(0.2),
-                        ]
-                            : [
-                          Colors.teal.shade50,
-                          Colors.cyan.shade50,
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.teal.withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.teal.shade400,
-                                    Colors.cyan.shade500,
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.my_location,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Current Location',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: theme.colorScheme.outline.withOpacity(0.2),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Latitude: 28.6139',
-                                      style: theme.textTheme.bodyMedium,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Longitude: 77.2090',
-                                      style: theme.textTheme.bodyMedium,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              OutlinedButton.icon(
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: const Text('Location refreshed'),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(Icons.refresh, size: 18),
-                                label: const Text('Refresh'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.teal,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
+                  // LOCATION AND SOS REMOVED
 
                   // Nearby Facilities
                   Text(
@@ -254,20 +73,24 @@ class _MedicalHelpPageState extends State<MedicalHelpPage>
                   const SizedBox(height: 12),
                   _buildFacilityCard(
                     context,
-                    'City Hospital',
-                    '0.5 km away',
-                    Icons.local_hospital,
-                    Colors.blue,
-                    isDark,
+                    name: 'City Hospital',
+                    distance: '0.5 km away',
+                    phone: '+91 99999 00000',
+                    address: 'City Hospital, New Delhi',
+                    icon: Icons.local_hospital,
+                    color: Colors.blue,
+                    isDark: isDark,
                   ),
                   const SizedBox(height: 12),
                   _buildFacilityCard(
                     context,
-                    'Medical Center',
-                    '1.2 km away',
-                    Icons.medical_services,
-                    Colors.purple,
-                    isDark,
+                    name: 'Medical Center',
+                    distance: '1.2 km away',
+                    phone: '+91 88888 77777',
+                    address: 'Medical Center, New Delhi',
+                    icon: Icons.medical_services,
+                    color: Colors.purple,
+                    isDark: isDark,
                   ),
 
                   const SizedBox(height: 32),
@@ -282,103 +105,20 @@ class _MedicalHelpPageState extends State<MedicalHelpPage>
                   const SizedBox(height: 12),
                   _buildContactCard(
                     context,
-                    'Ambulance',
-                    '108',
-                    Icons.emergency,
-                    Colors.red,
-                    isDark,
+                    name: 'Ambulance',
+                    number: '108',
+                    icon: Icons.emergency,
+                    color: Colors.red,
+                    isDark: isDark,
                   ),
                   const SizedBox(height: 12),
                   _buildContactCard(
                     context,
-                    'Event Medical Team',
-                    '+91 98765 43210',
-                    Icons.phone,
-                    Colors.green,
-                    isDark,
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // SOS Button
-                  AnimatedBuilder(
-                    animation: _pulseController,
-                    builder: (context, child) {
-                      return Transform.scale(
-                        scale: 1.0 + (_pulseController.value * 0.05),
-                        child: child,
-                      );
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.red.shade600,
-                            Colors.red.shade800,
-                          ],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.red.withOpacity(0.5),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(20),
-                          onTap: () {
-                            setState(() {
-                              _sosSent = true;
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: const [
-                                    Icon(Icons.check_circle,
-                                        color: Colors.white),
-                                    SizedBox(width: 12),
-                                    Text('SOS sent to admin & nearest help point'),
-                                  ],
-                                ),
-                                backgroundColor: Colors.green,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            );
-                          },
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                _sosSent
-                                    ? Icons.check_circle
-                                    : Icons.emergency_share,
-                                color: Colors.white,
-                                size: 32,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                _sosSent ? 'SOS SENT' : 'SEND SOS',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 2,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                    name: 'Event Medical Team',
+                    number: '+91 98765 43210',
+                    icon: Icons.phone,
+                    color: Colors.green,
+                    isDark: isDark,
                   ),
 
                   const SizedBox(height: 24),
@@ -391,15 +131,23 @@ class _MedicalHelpPageState extends State<MedicalHelpPage>
     );
   }
 
+  // Facilitiy Card with map and phone integration
   Widget _buildFacilityCard(
-      BuildContext context,
-      String name,
-      String distance,
-      IconData icon,
-      Color color,
-      bool isDark,
-      ) {
+      BuildContext context, {
+        required String name,
+        required String distance,
+        required String phone,
+        required String address,
+        required IconData icon,
+        required Color color,
+        required bool isDark,
+      }) {
     final theme = Theme.of(context);
+
+    // Retrieve Maps url with place name or address
+    String mapUrl =
+    Uri.encodeFull('https://www.google.com/maps/search/?api=1&query=$address');
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -447,24 +195,52 @@ class _MedicalHelpPageState extends State<MedicalHelpPage>
                     color: theme.colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
+                const SizedBox(height: 4),
+                GestureDetector(
+                  onTap: () async {
+                    final uri = Uri.parse('tel:$phone');
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
+                    }
+                  },
+                  child: Text(
+                    phone,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-          Icon(Icons.directions, color: color),
+          // This IconButton handles opening Google Maps
+          IconButton(
+            icon: Icon(Icons.directions, color: color), // The "arrow" icon
+            onPressed: () async {
+              final uri = Uri.parse(mapUrl);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+          ),
         ],
       ),
     );
   }
 
+  // Contact Card with call integration
   Widget _buildContactCard(
-      BuildContext context,
-      String name,
-      String number,
-      IconData icon,
-      Color color,
-      bool isDark,
-      ) {
+      BuildContext context, {
+        required String name,
+        required String number,
+        required IconData icon,
+        required Color color,
+        required bool isDark,
+      }) {
     final theme = Theme.of(context);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -515,7 +291,16 @@ class _MedicalHelpPageState extends State<MedicalHelpPage>
               ],
             ),
           ),
-          Icon(Icons.call, color: color),
+          // This IconButton handles opening the dialer
+          IconButton(
+            icon: Icon(Icons.call, color: color), // The "phone" icon
+            onPressed: () async {
+              final uri = Uri.parse('tel:$number');
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+              }
+            },
+          ),
         ],
       ),
     );

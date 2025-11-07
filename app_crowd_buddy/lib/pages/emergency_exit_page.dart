@@ -14,28 +14,24 @@ class EmergencyExitPage extends StatelessWidget {
         'name': 'Gate A – North Side',
         'distance': '150m',
         'status': 'Clear',
-        'capacity': '80%',
         'colorName': 'green',
       },
       {
         'name': 'Gate B – Near Parking',
         'distance': '300m',
         'status': 'Moderate',
-        'capacity': '60%',
         'colorName': 'orange',
       },
       {
         'name': 'Gate C – South Exit',
         'distance': '500m',
         'status': 'Clear',
-        'capacity': '90%',
         'colorName': 'green',
       },
       {
         'name': 'Emergency Exit – East Wing',
         'distance': '200m',
         'status': 'Crowded',
-        'capacity': '30%',
         'colorName': 'red',
       },
     ];
@@ -141,7 +137,8 @@ class EmergencyExitPage extends StatelessWidget {
               delegate: SliverChildBuilderDelegate(
                     (context, index) {
                   final exit = exits[index];
-                  final exitColor = _getColorFromName(exit['colorName'] as String);
+                  final exitColor =
+                  _getColorFromName(exit['colorName'] as String);
 
                   return TweenAnimationBuilder<double>(
                     duration: Duration(milliseconds: 300 + (index * 100)),
@@ -185,167 +182,93 @@ class EmergencyExitPage extends StatelessWidget {
                             ),
                           ],
                         ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(16),
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Row(
-                                    children: [
-                                      const Icon(Icons.navigation,
-                                          color: Colors.white),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                            'Navigating to ${exit['name']}...'),
-                                      ),
+                        // Removed InkWell to make it non-clickable
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      exitColor,
+                                      exitColor.withOpacity(0.7),
                                     ],
                                   ),
-                                  backgroundColor: Colors.green,
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: exitColor.withOpacity(0.4),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
                                 ),
-                              );
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(14),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          exitColor,
-                                          exitColor.withOpacity(0.7),
-                                        ],
+                                child: const Icon(
+                                  Icons.exit_to_app,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      exit['name'] as String,
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                      borderRadius: BorderRadius.circular(12),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: exitColor.withOpacity(0.4),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
                                     ),
-                                    child: const Icon(
-                                      Icons.exit_to_app,
-                                      color: Colors.white,
-                                      size: 28,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                    const SizedBox(height: 8),
+                                    Row(
                                       children: [
+                                        Icon(
+                                          Icons.straighten,
+                                          size: 14,
+                                          color: theme.colorScheme.onSurface
+                                              .withOpacity(0.6),
+                                        ),
+                                        const SizedBox(width: 4),
                                         Text(
-                                          exit['name'] as String,
-                                          style: theme.textTheme.titleMedium
+                                          exit['distance'] as String,
+                                          style: theme.textTheme.bodySmall
                                               ?.copyWith(
-                                            fontWeight: FontWeight.bold,
+                                            color: theme.colorScheme.onSurface
+                                                .withOpacity(0.6),
                                           ),
                                         ),
-                                        const SizedBox(height: 8),
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.straighten,
-                                              size: 14,
-                                              color: theme
-                                                  .colorScheme.onSurface
-                                                  .withOpacity(0.6),
+                                        const SizedBox(width: 12),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: exitColor.withOpacity(0.2),
+                                            borderRadius:
+                                            BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            exit['status'] as String,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: exitColor,
                                             ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              exit['distance'] as String,
-                                              style: theme.textTheme.bodySmall
-                                                  ?.copyWith(
-                                                color: theme
-                                                    .colorScheme.onSurface
-                                                    .withOpacity(0.6),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Container(
-                                              padding:
-                                              const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 2,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: exitColor
-                                                    .withOpacity(0.2),
-                                                borderRadius:
-                                                BorderRadius.circular(4),
-                                              ),
-                                              child: Text(
-                                                exit['status'] as String,
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: exitColor,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: ClipRRect(
-                                                borderRadius:
-                                                BorderRadius.circular(4),
-                                                child: LinearProgressIndicator(
-                                                  value: double.parse((exit['capacity'] as String)
-                                                      .replaceAll('%', '')) /
-                                                      100,
-                                                  backgroundColor: theme
-                                                      .colorScheme.surface,
-                                                  valueColor:
-                                                  AlwaysStoppedAnimation<
-                                                      Color>(
-                                                      exitColor),
-                                                  minHeight: 6,
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              exit['capacity'] as String,
-                                              style: theme.textTheme.bodySmall
-                                                  ?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                                color: exitColor,
-                                              ),
-                                            ),
-                                          ],
+                                          ),
                                         ),
                                       ],
                                     ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: exitColor.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(
-                                      Icons.navigation,
-                                      color: exitColor,
-                                      size: 20,
-                                    ),
-                                  ),
-                                ],
+                                    // Removed the LinearProgressIndicator row entirely
+                                  ],
+                                ),
                               ),
-                            ),
+                            ],
                           ),
                         ),
                       ),

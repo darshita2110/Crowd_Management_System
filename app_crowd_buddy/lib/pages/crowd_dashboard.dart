@@ -7,6 +7,8 @@ import 'feedback_page.dart';
 import 'lost_person_form.dart';
 import 'alerts_page.dart';
 import 'live_map_page.dart';
+// Import your WashroomsPage here
+import 'washrooms_page.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -23,6 +25,14 @@ class _CrowdDashboardState extends State<CrowdDashboard>
   late AnimationController _animationController;
   int _selectedIndex = 0;
 
+  // Mock data for zones
+  final List<Map<String, dynamic>> _zoneData = [
+    {'zone': 'Zone A', 'area': 'Main Stage Front', 'density': 0.92},
+    {'zone': 'Zone B', 'area': 'Food Court Area', 'density': 0.65},
+    {'zone': 'Zone C', 'area': 'North Entrance', 'density': 0.24},
+    {'zone': 'Zone D', 'area': 'Merch Stalls', 'density': 0.45},
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -37,6 +47,20 @@ class _CrowdDashboardState extends State<CrowdDashboard>
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  // Helper to get the status label
+  String _getDensityStatus(double density) {
+    if (density >= 0.8) return 'Overcrowded';
+    if (density >= 0.5) return 'Moderate';
+    return 'Safe';
+  }
+
+  // Helper to get the status color
+  Color _getDensityColor(double density) {
+    if (density >= 0.8) return Colors.red.shade600;
+    if (density >= 0.5) return Colors.orange.shade700;
+    return Colors.green.shade600;
   }
 
   @override
@@ -125,7 +149,8 @@ class _CrowdDashboardState extends State<CrowdDashboard>
                                 TileLayer(
                                   urlTemplate:
                                   'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                  userAgentPackageName: 'com.example.crowd_buddy',
+                                  userAgentPackageName:
+                                  'com.example.crowd_buddy',
                                 ),
                                 CircleLayer(
                                   circles: [
@@ -178,45 +203,63 @@ class _CrowdDashboardState extends State<CrowdDashboard>
                     ),
                   ),
 
-
-
-                  // Density Meter Section
+                  // Zone Density Status Section
                   Section(
-                    title: 'Current Status',
-                    icon: Icons.people_outline,
-                    child: const DensityMeter(level: 0.62),
+                    title: 'Zone Density Status',
+                    icon: Icons.analytics_outlined,
+                    child: Column(
+                      children: _zoneData.map((data) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12.0),
+                          child: _buildZoneCard(
+                            context,
+                            data['zone'],
+                            data['area'],
+                            data['density'],
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ),
 
-                  // Emergency Actions Section
+                  // Emergency & Facilities Actions Section
                   Section(
-                    title: 'Emergency',
-                    icon: Icons.warning_amber_rounded,
-                    child: Column(
+                    title: 'Quick Actions', // Renamed for broader scope
+                    icon: Icons.bolt_rounded,
+                    child: Row(
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildEmergencyButton(
-                                context,
-                                Icons.health_and_safety,
-                                'Medical Help',
-                                [Colors.red.shade400, Colors.red.shade600],
-                                    () => Navigator.pushNamed(
-                                    context, MedicalHelpPage.route),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildEmergencyButton(
-                                context,
-                                Icons.exit_to_app,
-                                'Safe Exit',
-                                [Colors.green.shade400, Colors.green.shade600],
-                                    () => Navigator.pushNamed(
-                                    context, EmergencyExitPage.route),
-                              ),
-                            ),
-                          ],
+                        Expanded(
+                          child: _buildActionButton(
+                            context,
+                            Icons.health_and_safety,
+                            'Medical',
+                            [Colors.red.shade400, Colors.red.shade600],
+                                () => Navigator.pushNamed(
+                                context, MedicalHelpPage.route),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _buildActionButton(
+                            context,
+                            Icons.exit_to_app,
+                            'Exits',
+                            [Colors.green.shade400, Colors.green.shade600],
+                                () => Navigator.pushNamed(
+                                context, EmergencyExitPage.route),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // NEW Washroom Button
+                        Expanded(
+                          child: _buildActionButton(
+                            context,
+                            Icons.wc,
+                            'Washrooms',
+                            [Colors.blue.shade400, Colors.blue.shade600],
+                                () => Navigator.pushNamed(
+                                context, WashroomsPage.route),
+                          ),
                         ),
                       ],
                     ),
@@ -269,9 +312,91 @@ class _CrowdDashboardState extends State<CrowdDashboard>
     );
   }
 
+  // Widget for Individual Zone Cards
+  Widget _buildZoneCard(
+      BuildContext context, String zone, String area, double density) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final densityColor = _getDensityColor(density);
+    final statusLabel = _getDensityStatus(density);
 
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black26 : Colors.grey.shade200,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade100,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    zone,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    area,
+                    style: TextStyle(
+                      color: theme.textTheme.bodySmall?.color,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: densityColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: TextStyle(
+                    color: densityColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: density,
+              backgroundColor: densityColor.withOpacity(0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(densityColor),
+              minHeight: 8,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  Widget _buildEmergencyButton(
+  // Renamed to generic '_buildActionButton' as it now includes non-emergency items
+  Widget _buildActionButton(
       BuildContext context,
       IconData icon,
       String label,
@@ -280,35 +405,42 @@ class _CrowdDashboardState extends State<CrowdDashboard>
       ) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: colors),
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colors,
+        ),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: colors[0].withOpacity(0.4),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: colors[0].withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           onTap: onPressed,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: Colors.white, size: 32),
+                Icon(icon, color: Colors.white, size: 28),
                 const SizedBox(height: 8),
                 Text(
                   label,
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 13,
                   ),
                   textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

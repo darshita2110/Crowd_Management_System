@@ -1,12 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../services/lost_person_service.dart';
+import 'package:image_picker/image_picker.dart';
 
 class LostPersonForm extends StatefulWidget {
   static const route = '/lost';
-  final String? eventId; // Pass event ID when navigating to this page
-
-  const LostPersonForm({super.key, this.eventId});
+  const LostPersonForm({super.key});
 
   @override
   State<LostPersonForm> createState() => _LostPersonFormState();
@@ -14,211 +12,70 @@ class LostPersonForm extends StatefulWidget {
 
 class _LostPersonFormState extends State<LostPersonForm> {
   final _formKey = GlobalKey<FormState>();
-  final _lostPersonName = TextEditingController();
-  final _age = TextEditingController();
-  final _desc = TextEditingController();
+
+  // Controllers
   final _reporterName = TextEditingController();
   final _contactNumber = TextEditingController();
+  final _lostPersonName = TextEditingController();
+  final _age = TextEditingController();
+  final _description = TextEditingController();
   final _lastSeenLocation = TextEditingController();
-  final _lostPersonService = LostPersonService();
 
+  // Other state
+  File? _imageFile;
   ImageProvider? _photo;
-  String _gender = 'Male';
-  TimeOfDay? _lastSeenTime;
-  bool _isSubmitting = false;
+  String _selectedGender = 'Male';
+  TimeOfDay? _selectedTime;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
+  Future<void> _pickImage(ImageSource source) async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? pickedFile = await picker.pickImage(source: source);
 
-  void _loadUserData() {
-    // Pre-fill reporter name from Firebase Auth
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null && user.displayName != null) {
-      _reporterName.text = user.displayName!;
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+        _photo = FileImage(_imageFile!);
+      });
     }
   }
 
-  @override
-  void dispose() {
-    _lostPersonName.dispose();
-    _age.dispose();
-    _desc.dispose();
-    _reporterName.dispose();
-    _contactNumber.dispose();
-    _lastSeenLocation.dispose();
-    super.dispose();
+  void _showImageSourceDialog() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Pick from Gallery'),
+              onTap: () {
+                _pickImage(ImageSource.gallery);
+                Navigator.of(context).pop();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera),
+              title: const Text('Take a Photo'),
+              onTap: () {
+                _pickImage(ImageSource.camera);
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _selectTime() async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: _lastSeenTime ?? TimeOfDay.now(),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Colors.orange,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      initialTime: TimeOfDay.now(),
     );
     if (picked != null) {
       setState(() {
-        _lastSeenTime = picked;
+        _selectedTime = picked;
       });
-    }
-  }
-
-  String _formatTime(TimeOfDay time) {
-    final hour = time.hourOfPeriod;
-    final minute = time.minute.toString().padLeft(2, '0');
-    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
-    return '${hour == 0 ? 12 : hour}:$minute $period';
-  }
-
-  String _formatTimeForAPI(TimeOfDay time) {
-    // Format as HH:MM (24-hour format)
-    final hour = time.hour.toString().padLeft(2, '0');
-    final minute = time.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
-  }
-
-  Future<void> _submitReport() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    if (_lastSeenTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: const [
-              Icon(Icons.warning, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Please select last seen time'),
-            ],
-          ),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-      return;
-    }
-
-    setState(() => _isSubmitting = true);
-
-    try {
-      // Get current user ID from Firebase
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception('User not logged in');
-      }
-
-      // Get event ID (you might want to pass this from previous screen)
-      final eventId = widget.eventId ?? ''; // Use empty string or get from storage
-
-      // Submit the report
-      final result = await _lostPersonService.submitReport(
-        reporterId: user.uid,
-        reporterName: _reporterName.text.trim(),
-        reporterContact: _contactNumber.text.trim(),
-        personName: _lostPersonName.text.trim(),
-        age: int.parse(_age.text.trim()),
-        gender: _gender,
-        description: _desc.text.trim().isEmpty
-            ? 'No description provided'
-            : _desc.text.trim(),
-        lastSeenLocation: _lastSeenLocation.text.trim(),
-        lastSeenTime: _formatTimeForAPI(_lastSeenTime!),
-        eventId: eventId,
-      );
-
-      if (mounted) {
-        if (result['success']) {
-          final reportData = result['data'];
-          final reportId = reportData['id'];
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('Report submitted successfully!'),
-                        Text(
-                          'Report ID: $reportId',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          );
-          Navigator.pop(context);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.white),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(result['message'])),
-                ],
-              ),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(child: Text('Error: ${e.toString()}')),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
     }
   }
 
@@ -285,8 +142,7 @@ class _LostPersonFormState extends State<LostPersonForm> {
                             colors: isDark
                                 ? [
                               Colors.orange.shade900.withOpacity(0.3),
-                              Colors.deepOrange.shade900
-                                  .withOpacity(0.2),
+                              Colors.deepOrange.shade900.withOpacity(0.2),
                             ]
                                 : [
                               Colors.orange.shade50,
@@ -349,8 +205,7 @@ class _LostPersonFormState extends State<LostPersonForm> {
                                       shape: BoxShape.circle,
                                       boxShadow: [
                                         BoxShadow(
-                                          color:
-                                          Colors.orange.withOpacity(0.5),
+                                          color: Colors.orange.withOpacity(0.5),
                                           blurRadius: 8,
                                           offset: const Offset(0, 2),
                                         ),
@@ -367,15 +222,7 @@ class _LostPersonFormState extends State<LostPersonForm> {
                             ),
                             const SizedBox(height: 16),
                             OutlinedButton.icon(
-                              onPressed: () async {
-                                // TODO: integrate image_picker
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Photo upload coming soon!'),
-                                    duration: Duration(seconds: 2),
-                                  ),
-                                );
-                              },
+                              onPressed: _showImageSourceDialog,
                               icon: const Icon(Icons.photo_camera_outlined),
                               label: const Text('Upload Photo'),
                               style: OutlinedButton.styleFrom(
@@ -388,10 +235,10 @@ class _LostPersonFormState extends State<LostPersonForm> {
                       ),
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
 
                     // Reporter Information Section
-                    _buildSectionHeader('Reporter Information', theme),
+                    _buildSectionHeader('Reporter Information', isDark),
                     const SizedBox(height: 16),
 
                     _buildTextField(
@@ -400,7 +247,6 @@ class _LostPersonFormState extends State<LostPersonForm> {
                       icon: Icons.person_outline,
                       validator: _req,
                       isDark: isDark,
-                      hint: 'Enter your name',
                     ),
                     const SizedBox(height: 16),
 
@@ -408,33 +254,23 @@ class _LostPersonFormState extends State<LostPersonForm> {
                       controller: _contactNumber,
                       label: 'Contact Number',
                       icon: Icons.phone_outlined,
+                      validator: _req,
                       keyboardType: TextInputType.phone,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Contact number is required';
-                        }
-                        if (value.length < 10) {
-                          return 'Enter a valid phone number';
-                        }
-                        return null;
-                      },
                       isDark: isDark,
-                      hint: 'Enter contact number',
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
 
-                    // Lost Person Information Section
-                    _buildSectionHeader('Lost Person Details', theme),
+                    // Lost Person Details Section
+                    _buildSectionHeader('Lost Person Details', isDark),
                     const SizedBox(height: 16),
 
                     _buildTextField(
                       controller: _lostPersonName,
                       label: 'Lost Person Name',
-                      icon: Icons.person_search,
+                      icon: Icons.person_outline,
                       validator: _req,
                       isDark: isDark,
-                      hint: 'Enter lost person\'s name',
                     ),
                     const SizedBox(height: 16),
 
@@ -446,22 +282,12 @@ class _LostPersonFormState extends State<LostPersonForm> {
                             controller: _age,
                             label: 'Age',
                             icon: Icons.cake_outlined,
+                            validator: _req,
                             keyboardType: TextInputType.number,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Age is required';
-                              }
-                              final age = int.tryParse(value);
-                              if (age == null || age < 0 || age > 150) {
-                                return 'Enter valid age';
-                              }
-                              return null;
-                            },
                             isDark: isDark,
-                            hint: 'Age',
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 16),
                         Expanded(
                           child: Container(
                             decoration: BoxDecoration(
@@ -469,10 +295,8 @@ class _LostPersonFormState extends State<LostPersonForm> {
                               gradient: LinearGradient(
                                 colors: isDark
                                     ? [
-                                  Colors.orange.shade900
-                                      .withOpacity(0.2),
-                                  Colors.deepOrange.shade900
-                                      .withOpacity(0.1),
+                                  Colors.orange.shade900.withOpacity(0.2),
+                                  Colors.deepOrange.shade900.withOpacity(0.1),
                                 ]
                                     : [
                                   Colors.orange.shade50,
@@ -481,11 +305,10 @@ class _LostPersonFormState extends State<LostPersonForm> {
                               ),
                             ),
                             child: DropdownButtonFormField<String>(
-                              value: _gender,
+                              value: _selectedGender,
                               decoration: InputDecoration(
                                 labelText: 'Gender',
-                                prefixIcon: const Icon(Icons.wc,
-                                    color: Colors.orange),
+                                prefixIcon: const Icon(Icons.wc, color: Colors.orange),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
@@ -493,15 +316,15 @@ class _LostPersonFormState extends State<LostPersonForm> {
                                 filled: true,
                                 fillColor: Colors.transparent,
                               ),
-                              items: ['Male', 'Female', 'Other']
-                                  .map((g) => DropdownMenuItem(
-                                value: g,
-                                child: Text(g),
-                              ))
-                                  .toList(),
-                              onChanged: (val) {
+                              items: ['Male', 'Female', 'Other'].map((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
+                              onChanged: (String? newValue) {
                                 setState(() {
-                                  _gender = val!;
+                                  _selectedGender = newValue!;
                                 });
                               },
                             ),
@@ -509,22 +332,20 @@ class _LostPersonFormState extends State<LostPersonForm> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 16),
 
                     _buildTextField(
-                      controller: _desc,
+                      controller: _description,
                       label: 'Clothing/Physical Description',
                       icon: Icons.description_outlined,
                       maxLines: 4,
                       isDark: isDark,
-                      hint: 'Describe clothing, appearance, distinctive features...',
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
 
-                    // Last Seen Information Section
-                    _buildSectionHeader('Last Seen Details', theme),
+                    // Last Seen Details Section
+                    _buildSectionHeader('Last Seen Details', isDark),
                     const SizedBox(height: 16),
 
                     _buildTextField(
@@ -533,9 +354,7 @@ class _LostPersonFormState extends State<LostPersonForm> {
                       icon: Icons.location_on_outlined,
                       validator: _req,
                       isDark: isDark,
-                      hint: 'E.g., Near Gate A, Food Court, Main Stage...',
                     ),
-
                     const SizedBox(height: 16),
 
                     // Last Seen Time
@@ -546,8 +365,7 @@ class _LostPersonFormState extends State<LostPersonForm> {
                           colors: isDark
                               ? [
                             Colors.orange.shade900.withOpacity(0.2),
-                            Colors.deepOrange.shade900
-                                .withOpacity(0.1),
+                            Colors.deepOrange.shade900.withOpacity(0.1),
                           ]
                               : [
                             Colors.orange.shade50,
@@ -561,10 +379,7 @@ class _LostPersonFormState extends State<LostPersonForm> {
                         child: InputDecorator(
                           decoration: InputDecoration(
                             labelText: 'Last Seen Time',
-                            prefixIcon: const Icon(Icons.access_time,
-                                color: Colors.orange),
-                            suffixIcon: const Icon(Icons.arrow_drop_down,
-                                color: Colors.orange),
+                            prefixIcon: const Icon(Icons.access_time, color: Colors.orange),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none,
@@ -573,43 +388,42 @@ class _LostPersonFormState extends State<LostPersonForm> {
                             fillColor: Colors.transparent,
                           ),
                           child: Text(
-                            _lastSeenTime != null
-                                ? _formatTime(_lastSeenTime!)
+                            _selectedTime != null
+                                ? _selectedTime!.format(context)
                                 : 'Select time',
                             style: TextStyle(
-                              color: _lastSeenTime != null
+                              color: _selectedTime != null
                                   ? theme.textTheme.bodyLarge?.color
-                                  : theme.colorScheme.onSurface
-                                  .withOpacity(0.5),
+                                  : theme.hintColor,
                             ),
                           ),
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 16),
 
-                    // Important Note
+                    // Warning Message
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        color: Colors.orange.withOpacity(0.1),
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: Colors.orange.withOpacity(0.3),
+                          color: Colors.orange.shade200,
+                          width: 1,
                         ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.info_outline,
-                              color: Colors.orange, size: 24),
-                          const SizedBox(width: 12),
+                          Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'This report will be immediately sent to event security and staff.',
-                              style: theme.textTheme.bodySmall?.copyWith(
+                              style: TextStyle(
                                 color: Colors.orange.shade700,
-                                fontWeight: FontWeight.w500,
+                                fontSize: 12,
                               ),
                             ),
                           ),
@@ -643,33 +457,22 @@ class _LostPersonFormState extends State<LostPersonForm> {
                         color: Colors.transparent,
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),
-                          onTap: _isSubmitting ? null : _submitReport,
-                          child: Center(
-                            child: _isSubmitting
-                                ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                                : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(Icons.send, color: Colors.white),
-                                SizedBox(width: 12),
-                                Text(
-                                  'Submit Report',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
-                                  ),
+                          onTap: _submitForm,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(Icons.send, color: Colors.white),
+                              SizedBox(width: 12),
+                              Text(
+                                'Submit Report',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -686,28 +489,28 @@ class _LostPersonFormState extends State<LostPersonForm> {
     );
   }
 
-  Widget _buildSectionHeader(String title, ThemeData theme) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 24,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Colors.orange, Colors.deepOrange],
-            ),
-            borderRadius: BorderRadius.circular(2),
+  Widget _buildSectionHeader(String title, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.only(left: 4, bottom: 4),
+      decoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(
+            color: Colors.orange.shade600,
+            width: 4,
           ),
         ),
-        const SizedBox(width: 12),
-        Text(
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 8),
+        child: Text(
           title,
-          style: theme.textTheme.titleLarge?.copyWith(
+          style: TextStyle(
+            fontSize: 16,
             fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
+            color: isDark ? Colors.orange.shade300 : Colors.orange.shade900,
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -719,7 +522,6 @@ class _LostPersonFormState extends State<LostPersonForm> {
     String? Function(String?)? validator,
     TextInputType? keyboardType,
     int maxLines = 1,
-    String? hint,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -740,7 +542,6 @@ class _LostPersonFormState extends State<LostPersonForm> {
         controller: controller,
         decoration: InputDecoration(
           labelText: label,
-          hintText: hint,
           prefixIcon: Icon(icon, color: Colors.orange),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
@@ -756,6 +557,121 @@ class _LostPersonFormState extends State<LostPersonForm> {
     );
   }
 
+  void _submitForm() {
+    if (_formKey.currentState!.validate()) {
+      if (_imageFile == null) {
+        _showErrorSnackBar('Please upload a photo of the lost person.');
+        return;
+      }
+
+      if (_selectedTime == null) {
+        _showErrorSnackBar('Please select the last seen time.');
+        return;
+      }
+
+      // Show success dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.check_circle,
+                    color: Colors.green.shade600,
+                    size: 48,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Report Submitted',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Your report has been successfully sent to event security and admin team.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Close dialog
+                      Navigator.of(context).pop(); // Close form
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange.shade600,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'OK',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
+
   String? _req(String? v) =>
       (v == null || v.trim().isEmpty) ? 'This field is required' : null;
+
+  @override
+  void dispose() {
+    _reporterName.dispose();
+    _contactNumber.dispose();
+    _lostPersonName.dispose();
+    _age.dispose();
+    _description.dispose();
+    _lastSeenLocation.dispose();
+    super.dispose();
+  }
 }

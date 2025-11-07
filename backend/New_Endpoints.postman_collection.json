@@ -1,0 +1,461 @@
+{
+	"info": {
+		"_postman_id": "new-endpoints-addon",
+		"name": "Crowd Management - New Endpoints",
+		"description": "New endpoints: Washroom Facilities, Emergency Exits, Zones, Medical Facilities",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Washroom Facilities",
+			"item": [
+				{
+					"name": "Create Washroom Facility",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_id\": \"{{event_id}}\",\n  \"name\": \"Men's Washroom A\",\n  \"gender\": \"male\",\n  \"floor_level\": \"Ground Floor\",\n  \"capacity\": 10,\n  \"availability_status\": \"available\",\n  \"location_details\": \"Near Main Entrance\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/washroom-facilities/",
+							"host": ["{{base_url}}"],
+							"path": ["washroom-facilities", ""]
+						}
+					}
+				},
+				{
+					"name": "Get All Washroom Facilities",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/washroom-facilities/?event_id={{event_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["washroom-facilities", ""],
+							"query": [
+								{
+									"key": "event_id",
+									"value": "{{event_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Washroom Facility by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/washroom-facilities/{{washroom_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["washroom-facilities", "{{washroom_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Washroom Facility",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_id\": \"{{event_id}}\",\n  \"name\": \"Men's Washroom A (Updated)\",\n  \"gender\": \"male\",\n  \"floor_level\": \"Ground Floor\",\n  \"capacity\": 12,\n  \"availability_status\": \"available\",\n  \"location_details\": \"Near Main Entrance - Expanded\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/washroom-facilities/{{washroom_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["washroom-facilities", "{{washroom_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Washroom Status",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/washroom-facilities/{{washroom_id}}/status?status=occupied",
+							"host": ["{{base_url}}"],
+							"path": ["washroom-facilities", "{{washroom_id}}", "status"],
+							"query": [
+								{
+									"key": "status",
+									"value": "occupied",
+									"description": "Values: available, occupied, maintenance"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Washroom Facility",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/washroom-facilities/{{washroom_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["washroom-facilities", "{{washroom_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Emergency Exits",
+			"item": [
+				{
+					"name": "Create Emergency Exit",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_id\": \"{{event_id}}\",\n  \"exit_name\": \"Exit A - North\",\n  \"location\": \"North Wing, Ground Floor\",\n  \"status\": \"clear\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/emergency-exits/",
+							"host": ["{{base_url}}"],
+							"path": ["emergency-exits", ""]
+						}
+					}
+				},
+				{
+					"name": "Get All Emergency Exits",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/emergency-exits/?event_id={{event_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["emergency-exits", ""],
+							"query": [
+								{
+									"key": "event_id",
+									"value": "{{event_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Emergency Exit by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/emergency-exits/{{exit_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["emergency-exits", "{{exit_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Emergency Exit",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_id\": \"{{event_id}}\",\n  \"exit_name\": \"Exit A - North (Updated)\",\n  \"location\": \"North Wing, Ground Floor\",\n  \"status\": \"moderate\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/emergency-exits/{{exit_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["emergency-exits", "{{exit_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Exit Status",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/emergency-exits/{{exit_id}}/status?status=crowded",
+							"host": ["{{base_url}}"],
+							"path": ["emergency-exits", "{{exit_id}}", "status"],
+							"query": [
+								{
+									"key": "status",
+									"value": "crowded",
+									"description": "Values: crowded, moderate, clear"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Emergency Exit",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/emergency-exits/{{exit_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["emergency-exits", "{{exit_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Zones (Crowd Density)",
+			"item": [
+				{
+					"name": "Create Zone",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_id\": \"{{event_id}}\",\n  \"name\": \"Main Hall\",\n  \"capacity\": 500,\n  \"current_density\": 0,\n  \"density_status\": \"low\",\n  \"image_url\": null\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/zones/",
+							"host": ["{{base_url}}"],
+							"path": ["zones", ""]
+						}
+					}
+				},
+				{
+					"name": "Get All Zones",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/zones/?event_id={{event_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["zones", ""],
+							"query": [
+								{
+									"key": "event_id",
+									"value": "{{event_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Zone by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/zones/{{zone_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["zones", "{{zone_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Zone",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_id\": \"{{event_id}}\",\n  \"name\": \"Main Hall (Expanded)\",\n  \"capacity\": 600,\n  \"current_density\": 250,\n  \"density_status\": \"moderate\",\n  \"image_url\": null\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/zones/{{zone_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["zones", "{{zone_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Zone Density (Auto-Calculate Status)",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/zones/{{zone_id}}/density?current_density=400",
+							"host": ["{{base_url}}"],
+							"path": ["zones", "{{zone_id}}", "density"],
+							"query": [
+								{
+									"key": "current_density",
+									"value": "400",
+									"description": "Number of people in zone"
+								},
+								{
+									"key": "density_status",
+									"value": "crowded",
+									"description": "Optional: crowded, moderate, low (auto-calculated if omitted)",
+									"disabled": true
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Zone",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/zones/{{zone_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["zones", "{{zone_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Medical Facilities",
+			"item": [
+				{
+					"name": "Create Medical Facility",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_id\": \"{{event_id}}\",\n  \"facility_name\": \"First Aid Station A\",\n  \"facility_type\": \"first-aid\",\n  \"contact_number\": \"+1234567890\",\n  \"address\": \"Main Entrance, Ground Floor\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/medical-facilities/",
+							"host": ["{{base_url}}"],
+							"path": ["medical-facilities", ""]
+						}
+					}
+				},
+				{
+					"name": "Get All Medical Facilities",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/medical-facilities/?event_id={{event_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["medical-facilities", ""],
+							"query": [
+								{
+									"key": "event_id",
+									"value": "{{event_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Medical Facility by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/medical-facilities/{{facility_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["medical-facilities", "{{facility_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Medical Facility",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_id\": \"{{event_id}}\",\n  \"facility_name\": \"First Aid Station A (24/7)\",\n  \"facility_type\": \"first-aid\",\n  \"contact_number\": \"+1234567890\",\n  \"address\": \"Main Entrance, Ground Floor - Open 24/7\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/medical-facilities/{{facility_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["medical-facilities", "{{facility_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Medical Facility",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/medical-facilities/{{facility_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["medical-facilities", "{{facility_id}}"]
+						}
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000",
+			"type": "string"
+		},
+		{
+			"key": "event_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "washroom_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "exit_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "zone_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "facility_id",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

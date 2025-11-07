@@ -67,10 +67,12 @@ async def init_db():
     """
     global client, database
     if client is None:
-        mongodb_url = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+        # Use MONGO_URL (primary) or MONGO_URI (fallback) or default to localhost
+        mongodb_url = os.getenv("MONGO_URL") or os.getenv("MONGO_URI", "mongodb://localhost:27017")
         client = AsyncIOMotorClient(mongodb_url)
-        database = client["crowd_management"]
-        print("✓ Database connection initialized")
+        db_name = os.getenv("DB_NAME", "crowd_management_system_db")
+        database = client[db_name]
+        print(f"✓ Database connection initialized to {db_name}")
     else:
         print("✓ Database connection already initialized (reusing existing client)")
     

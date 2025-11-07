@@ -12,19 +12,19 @@ def generate_feedback_id() -> str:
     """Generate unique feedback ID"""
     return f"FB{secrets.token_hex(6).upper()}"
 
-def analyze_sentiment(comments: Optional[str]) -> str:
+def analyze_sentiment(comment: Optional[str]) -> str:
     """Simple sentiment analysis (can be enhanced with AI/ML)"""
-    if not comments:
+    if not comment:
         return "neutral"
     
-    comments_lower = comments.lower()
+    comment_lower = comment.lower()
     
     # Simple keyword-based sentiment analysis
     positive_keywords = ["great", "excellent", "amazing", "wonderful", "good", "love", "best", "awesome"]
     negative_keywords = ["bad", "poor", "terrible", "worst", "hate", "awful", "horrible", "disappointing"]
     
-    positive_count = sum(1 for word in positive_keywords if word in comments_lower)
-    negative_count = sum(1 for word in negative_keywords if word in comments_lower)
+    positive_count = sum(1 for word in positive_keywords if word in comment_lower)
+    negative_count = sum(1 for word in negative_keywords if word in comment_lower)
     
     if positive_count > negative_count:
         return "positive"
@@ -38,10 +38,11 @@ async def create_feedback(feedback: FeedbackCreate):
     """Submit feedback for an event"""
     feedback_dict = feedback.model_dump()
     feedback_dict["id"] = generate_feedback_id()
-    feedback_dict["submitted_at"] = datetime.utcnow()
+    feedback_dict["created_at"] = datetime.utcnow()
+    feedback_dict["submitted_at"] = datetime.utcnow()  # Backward compatibility
     
-    # Perform sentiment analysis
-    feedback_dict["ai_sentiment"] = analyze_sentiment(feedback_dict.get("comments"))
+    # Perform sentiment analysis on 'comment' field
+    feedback_dict["ai_sentiment"] = analyze_sentiment(feedback_dict.get("comment"))
     
     await database["feedback"].insert_one(feedback_dict)
     

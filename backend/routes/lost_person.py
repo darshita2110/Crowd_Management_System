@@ -29,8 +29,13 @@ async def create_lost_person_report(report: LostPersonCreate):
     """Report a lost person"""
     report_dict = report.model_dump()
     report_dict["id"] = generate_report_id()
-    report_dict["status"] = "reported"
+    report_dict["status"] = "missing"  # Frontend uses 'missing' as initial status
     report_dict["reported_at"] = datetime.utcnow()
+    report_dict["created_at"] = datetime.utcnow()
+    
+    # Backward compatibility: also set reporter_contact if reporter_phone is provided
+    if "reporter_phone" in report_dict:
+        report_dict["reporter_contact"] = report_dict["reporter_phone"]
     
     # Calculate priority
     report_dict["priority"] = calculate_priority(report_dict["age"])
@@ -55,7 +60,19 @@ async def get_lost_person_reports(
         query["priority"] = priority
     
     reports = await database["lost_persons"].find(query).sort("reported_at", -1).to_list(1000)
-    return [LostPersonReport(**{k: v for k, v in report.items() if k != "_id"}) for report in reports]
+    
+    # Convert old field names to new for backward compatibility
+    result = []
+    for report in reports:
+        if "person_name" in report and "name" not in report:
+            report["name"] = report["person_name"]
+        if "reporter_contact" in report and "reporter_phone" not in report:
+            report["reporter_phone"] = report["reporter_contact"]
+        if "reported_at" in report and "created_at" not in report:
+            report["created_at"] = report["reported_at"]
+        result.append(LostPersonReport(**{k: v for k, v in report.items() if k != "_id"}))
+    
+    return result
 
 @router.get("/{report_id}", response_model=LostPersonReport)
 async def get_lost_person_report(report_id: str):
@@ -68,13 +85,21 @@ async def get_lost_person_report(report_id: str):
             detail="Lost person report not found"
         )
     
+    # Convert old field names to new for backward compatibility
+    if "person_name" in report and "name" not in report:
+        report["name"] = report["person_name"]
+    if "reporter_contact" in report and "reporter_phone" not in report:
+        report["reporter_phone"] = report["reporter_contact"]
+    if "reported_at" in report and "created_at" not in report:
+        report["created_at"] = report["reported_at"]
+    
     return LostPersonReport(**{k: v for k, v in report.items() if k != "_id"})
 
 @router.patch("/{report_id}/status")
-async def update_report_status(report_id: str, new_status: str):
+async def update_report_status(report_id: str, status: str):  # Changed parameter name
     """Update lost person report status"""
-    valid_statuses = ["reported", "searching", "found", "resolved"]
-    if new_status not in valid_statuses:
+    valid_statuses = ["reported", "searching", "found", "resolved", "missing"]  # Added "missing"
+    if status not in valid_statuses:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
@@ -89,10 +114,19 @@ async def update_report_status(report_id: str, new_status: str):
     
     await database["lost_persons"].update_one(
         {"id": report_id},
-        {"$set": {"status": new_status}}
+        {"$set": {"status": status}}  # Changed from new_status
     )
     
     updated_report = await database["lost_persons"].find_one({"id": report_id})
+    
+    # Convert old field names to new for backward compatibility
+    if "person_name" in updated_report and "name" not in updated_report:
+        updated_report["name"] = updated_report["person_name"]
+    if "reporter_contact" in updated_report and "reporter_phone" not in updated_report:
+        updated_report["reporter_phone"] = updated_report["reporter_contact"]
+    if "reported_at" in updated_report and "created_at" not in updated_report:
+        updated_report["created_at"] = updated_report["reported_at"]
+    
     return LostPersonReport(**{k: v for k, v in updated_report.items() if k != "_id"})
 
 @router.get("/search/active")

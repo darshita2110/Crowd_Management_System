@@ -555,8 +555,8 @@ class TestLostPersons:
         response = await async_client.post("/lost-persons/", json={
             "reporter_id": test_user["id"],
             "reporter_name": "Parent Name",
-            "reporter_contact": "+1555012345",
-            "person_name": "Child Name",
+            "reporter_phone": "+1555012345",  # Changed from reporter_contact
+            "name": "Child Name",  # Changed from person_name
             "age": 6,
             "gender": "female",
             "description": "Blue dress, brown hair",
@@ -568,7 +568,7 @@ class TestLostPersons:
         data = response.json()
         assert "id" in data
         assert data["priority"] == "critical"  # Child should be critical
-        assert data["status"] == "reported"
+        assert data["status"] == "missing"  # Changed from "reported"
     
     @pytest.mark.asyncio
     async def test_report_lost_elderly(self, async_client, test_user, test_event):
@@ -576,8 +576,8 @@ class TestLostPersons:
         response = await async_client.post("/lost-persons/", json={
             "reporter_id": test_user["id"],
             "reporter_name": "Family Member",
-            "reporter_contact": "+1555098765",
-            "person_name": "Elderly Person",
+            "reporter_phone": "+1555098765",  # Changed from reporter_contact
+            "name": "Elderly Person",  # Changed from person_name
             "age": 75,
             "gender": "male",
             "description": "Gray jacket, glasses",
@@ -602,8 +602,8 @@ class TestLostPersons:
         await async_client.post("/lost-persons/", json={
             "reporter_id": test_user["id"],
             "reporter_name": "Test Reporter",
-            "reporter_contact": "+1555111222",
-            "person_name": "Test Person",
+            "reporter_phone": "+1555111222",  # Changed from reporter_contact
+            "name": "Test Person",  # Changed from person_name
             "age": 25,
             "gender": "male",
             "description": "Red shirt",
@@ -625,8 +625,8 @@ class TestLostPersons:
         create_response = await async_client.post("/lost-persons/", json={
             "reporter_id": test_user["id"],
             "reporter_name": "Reporter",
-            "reporter_contact": "+1555333444",
-            "person_name": "Lost Person",
+            "reporter_phone": "+1555333444",  # Changed from reporter_contact
+            "name": "Lost Person",  # Changed from person_name
             "age": 30,
             "gender": "female",
             "description": "Green jacket",
@@ -638,7 +638,7 @@ class TestLostPersons:
         
         # Update to found
         response = await async_client.patch(
-            f"/lost-persons/{report_id}/status?new_status=found"
+            f"/lost-persons/{report_id}/status?status=found"  # Changed parameter name
         )
         assert response.status_code == 200
         data = response.json()
@@ -680,7 +680,8 @@ class TestFeedback:
             "user_id": test_user["id"],
             "event_id": test_event["id"],
             "rating": 5,
-            "comments": "Excellent event! Great organization and amazing experience!"
+            "category": "general",
+            "comment": "Excellent event! Great organization and amazing experience!"  # Changed from "comments"
         })
         assert response.status_code == 201
         data = response.json()
@@ -695,7 +696,8 @@ class TestFeedback:
             "user_id": test_user["id"],
             "event_id": test_event["id"],
             "rating": 2,
-            "comments": "Poor management, terrible experience, bad facilities"
+            "category": "general",
+            "comment": "Poor management, terrible experience, bad facilities"  # Changed from "comments"
         })
         assert response.status_code == 201
         data = response.json()
@@ -1036,6 +1038,305 @@ class TestSystem:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
+
+
+# ============================================================================
+# WASHROOM FACILITIES TESTS
+# ============================================================================
+
+class TestWashroomFacilities:
+    """Test washroom facility endpoints"""
+    
+    @pytest.mark.asyncio
+    async def test_create_washroom_facility(self, async_client, test_event):
+        """Test creating a washroom facility"""
+        response = await async_client.post("/washroom-facilities/", json={
+            "event_id": test_event["id"],
+            "name": "Men's Washroom A",
+            "gender": "male",
+            "floor_level": "Ground Floor",
+            "capacity": 10,
+            "availability_status": "available",
+            "location_details": "Near Main Entrance"
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert "id" in data
+        assert data["name"] == "Men's Washroom A"
+        assert data["gender"] == "male"
+        assert data["availability_status"] == "available"
+    
+    @pytest.mark.asyncio
+    async def test_get_all_washroom_facilities(self, async_client, test_event):
+        """Test getting all washroom facilities"""
+        # Create a facility first
+        await async_client.post("/washroom-facilities/", json={
+            "event_id": test_event["id"],
+            "name": "Women's Washroom B",
+            "gender": "female",
+            "capacity": 8,
+            "availability_status": "available"
+        })
+        
+        response = await async_client.get(f"/washroom-facilities/?event_id={test_event['id']}")
+        assert response.status_code == 200
+        facilities = response.json()
+        assert isinstance(facilities, list)
+        assert len(facilities) > 0
+    
+    @pytest.mark.asyncio
+    async def test_update_washroom_status(self, async_client, test_event):
+        """Test updating washroom availability status"""
+        # Create facility
+        create_response = await async_client.post("/washroom-facilities/", json={
+            "event_id": test_event["id"],
+            "name": "Unisex Washroom C",
+            "gender": "unisex",
+            "capacity": 5,
+            "availability_status": "available"
+        })
+        facility_id = create_response.json()["id"]
+        
+        # Update status
+        response = await async_client.patch(
+            f"/washroom-facilities/{facility_id}/status?status=occupied"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["availability_status"] == "occupied"
+    
+    @pytest.mark.asyncio
+    async def test_delete_washroom_facility(self, async_client, test_event):
+        """Test deleting a washroom facility"""
+        # Create facility
+        create_response = await async_client.post("/washroom-facilities/", json={
+            "event_id": test_event["id"],
+            "name": "Temp Washroom",
+            "gender": "male",
+            "capacity": 3,
+            "availability_status": "maintenance"
+        })
+        facility_id = create_response.json()["id"]
+        
+        # Delete
+        response = await async_client.delete(f"/washroom-facilities/{facility_id}")
+        assert response.status_code == 204
+
+
+# ============================================================================
+# EMERGENCY EXITS TESTS
+# ============================================================================
+
+class TestEmergencyExits:
+    """Test emergency exit endpoints"""
+    
+    @pytest.mark.asyncio
+    async def test_create_emergency_exit(self, async_client, test_event):
+        """Test creating an emergency exit"""
+        response = await async_client.post("/emergency-exits/", json={
+            "event_id": test_event["id"],
+            "exit_name": "Exit A - North",
+            "location": "North Wing, Ground Floor",
+            "status": "clear"
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert "id" in data
+        assert data["exit_name"] == "Exit A - North"
+        assert data["status"] == "clear"
+    
+    @pytest.mark.asyncio
+    async def test_get_all_emergency_exits(self, async_client, test_event):
+        """Test getting all emergency exits"""
+        # Create an exit first
+        await async_client.post("/emergency-exits/", json={
+            "event_id": test_event["id"],
+            "exit_name": "Exit B - South",
+            "location": "South Wing",
+            "status": "moderate"
+        })
+        
+        response = await async_client.get(f"/emergency-exits/?event_id={test_event['id']}")
+        assert response.status_code == 200
+        exits = response.json()
+        assert isinstance(exits, list)
+        assert len(exits) > 0
+    
+    @pytest.mark.asyncio
+    async def test_update_exit_status(self, async_client, test_event):
+        """Test updating emergency exit status"""
+        # Create exit
+        create_response = await async_client.post("/emergency-exits/", json={
+            "event_id": test_event["id"],
+            "exit_name": "Exit C - East",
+            "location": "East Wing",
+            "status": "clear"
+        })
+        exit_id = create_response.json()["id"]
+        
+        # Update status to crowded
+        response = await async_client.patch(
+            f"/emergency-exits/{exit_id}/status?status=crowded"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "crowded"
+    
+    @pytest.mark.asyncio
+    async def test_delete_emergency_exit(self, async_client, test_event):
+        """Test deleting an emergency exit"""
+        # Create exit
+        create_response = await async_client.post("/emergency-exits/", json={
+            "event_id": test_event["id"],
+            "exit_name": "Temp Exit",
+            "location": "Temporary Location",
+            "status": "clear"
+        })
+        exit_id = create_response.json()["id"]
+        
+        # Delete
+        response = await async_client.delete(f"/emergency-exits/{exit_id}")
+        assert response.status_code == 204
+
+
+# ============================================================================
+# ZONES TESTS
+# ============================================================================
+
+class TestZones:
+    """Test zone endpoints"""
+    
+    @pytest.mark.asyncio
+    async def test_create_zone(self, async_client, test_event):
+        """Test creating a zone"""
+        response = await async_client.post("/zones/", json={
+            "event_id": test_event["id"],
+            "name": "Main Hall",
+            "capacity": 500,
+            "current_density": 0,
+            "density_status": "low"
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert "id" in data
+        assert data["name"] == "Main Hall"
+        assert data["capacity"] == 500
+        assert data["density_status"] == "low"
+    
+    @pytest.mark.asyncio
+    async def test_get_all_zones(self, async_client, test_event):
+        """Test getting all zones"""
+        # Create a zone first
+        await async_client.post("/zones/", json={
+            "event_id": test_event["id"],
+            "name": "Food Court",
+            "capacity": 200,
+            "current_density": 50,
+            "density_status": "low"
+        })
+        
+        response = await async_client.get(f"/zones/?event_id={test_event['id']}")
+        assert response.status_code == 200
+        zones = response.json()
+        assert isinstance(zones, list)
+        assert len(zones) > 0
+    
+    @pytest.mark.asyncio
+    async def test_update_zone_density(self, async_client, test_event):
+        """Test updating zone crowd density"""
+        # Create zone
+        create_response = await async_client.post("/zones/", json={
+            "event_id": test_event["id"],
+            "name": "Exhibition Area",
+            "capacity": 300,
+            "current_density": 100,
+            "density_status": "low"
+        })
+        zone_id = create_response.json()["id"]
+        
+        # Update density (should auto-calculate status)
+        response = await async_client.patch(
+            f"/zones/{zone_id}/density?current_density=250"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["current_density"] == 250
+        assert data["density_status"] == "crowded"  # 250/300 = 83% > 80%
+    
+    @pytest.mark.asyncio
+    async def test_delete_zone(self, async_client, test_event):
+        """Test deleting a zone"""
+        # Create zone
+        create_response = await async_client.post("/zones/", json={
+            "event_id": test_event["id"],
+            "name": "Temp Zone",
+            "capacity": 100,
+            "current_density": 0,
+            "density_status": "low"
+        })
+        zone_id = create_response.json()["id"]
+        
+        # Delete
+        response = await async_client.delete(f"/zones/{zone_id}")
+        assert response.status_code == 204
+
+
+# ============================================================================
+# MEDICAL FACILITIES TESTS
+# ============================================================================
+
+class TestMedicalFacilitiesNew:
+    """Test medical facility endpoints (new endpoint)"""
+    
+    @pytest.mark.asyncio
+    async def test_create_medical_facility(self, async_client, test_event):
+        """Test creating a medical facility"""
+        response = await async_client.post("/medical-facilities/", json={
+            "event_id": test_event["id"],
+            "facility_name": "First Aid Station A",
+            "facility_type": "first-aid",
+            "contact_number": "+1234567890",
+            "address": "Main Entrance, Ground Floor"
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert "id" in data
+        assert data["facility_name"] == "First Aid Station A"
+        assert data["facility_type"] == "first-aid"
+    
+    @pytest.mark.asyncio
+    async def test_get_all_medical_facilities(self, async_client, test_event):
+        """Test getting all medical facilities"""
+        # Create a facility first
+        await async_client.post("/medical-facilities/", json={
+            "event_id": test_event["id"],
+            "facility_name": "Medical Clinic B",
+            "facility_type": "clinic",
+            "contact_number": "+1987654321",
+            "address": "West Wing"
+        })
+        
+        response = await async_client.get(f"/medical-facilities/?event_id={test_event['id']}")
+        assert response.status_code == 200
+        facilities = response.json()
+        assert isinstance(facilities, list)
+        assert len(facilities) > 0
+    
+    @pytest.mark.asyncio
+    async def test_delete_medical_facility(self, async_client, test_event):
+        """Test deleting a medical facility"""
+        # Create facility
+        create_response = await async_client.post("/medical-facilities/", json={
+            "event_id": test_event["id"],
+            "facility_name": "Temp Hospital",
+            "facility_type": "hospital",
+            "contact_number": "+1111111111"
+        })
+        facility_id = create_response.json()["id"]
+        
+        # Delete
+        response = await async_client.delete(f"/medical-facilities/{facility_id}")
+        assert response.status_code == 204
 
 
 # ============================================================================

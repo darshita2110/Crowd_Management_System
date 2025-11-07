@@ -55,11 +55,13 @@ class Area(BaseModel):
 class EventBase(BaseModel):
     name: str
     description: Optional[str] = None
-    start_time: datetime
-    end_time: datetime
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
     location: str
-    capacity: int = Field(..., gt=0, description="Total event capacity")
+    capacity: Optional[int] = Field(None, gt=0, description="Total event capacity")
+    attendees_count: int = Field(0, ge=0, description="Current number of attendees")
     areas: List[Area] = Field(default_factory=list, description="Predefined areas for this event")
+    date: Optional[str] = None  # Frontend compatibility: ISO date string
 
 class EventCreate(EventBase):
     organizer_id: str
@@ -67,7 +69,7 @@ class EventCreate(EventBase):
 class Event(EventBase):
     id: str
     organizer_id: str
-    status: Literal["upcoming", "live", "completed"] = "upcoming"
+    status: Literal["upcoming", "live", "completed", "active"] = "upcoming"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
@@ -118,7 +120,7 @@ class CrowdDensity(CrowdDensityBase):
 # 🧒 Lost Person Models
 # ---------------------------------------------------
 class LostPersonBase(BaseModel):
-    person_name: str
+    name: str  # Frontend uses 'name' instead of 'person_name'
     age: int = Field(..., gt=0, le=150)
     gender: Literal["male", "female", "other"]
     description: Optional[str] = None
@@ -127,20 +129,22 @@ class LostPersonBase(BaseModel):
     photo_url: Optional[str] = None
 
 class LostPersonCreate(LostPersonBase):
-    reporter_id: str
+    reporter_id: Optional[str] = None
     reporter_name: str
-    reporter_contact: str
+    reporter_phone: str  # Frontend uses 'reporter_phone' instead of 'reporter_contact'
     event_id: Optional[str] = None
 
 class LostPersonReport(LostPersonBase):
     id: str
-    reporter_id: str
+    reporter_id: Optional[str] = None
     reporter_name: str
-    reporter_contact: str
+    reporter_phone: str  # Frontend uses 'reporter_phone' instead of 'reporter_contact'
+    reporter_contact: Optional[str] = None  # Backward compatibility
     event_id: Optional[str] = None
-    status: Literal["reported", "searching", "found", "resolved"] = "reported"
+    status: Literal["reported", "searching", "found", "resolved", "missing"] = "reported"  # Frontend uses 'missing' and 'found'
     priority: Literal["low", "medium", "high", "critical"] = "medium"
-    reported_at: datetime = Field(default_factory=datetime.utcnow)
+    reported_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
         from_attributes = True
@@ -244,16 +248,107 @@ class Alert(AlertBase):
 class FeedbackBase(BaseModel):
     event_id: str
     rating: int = Field(..., ge=1, le=5)
-    comments: Optional[str] = None
+    category: Literal["general", "safety", "navigation", "facilities", "emergency"] = "general"
+    comment: Optional[str] = None  # Frontend uses 'comment' instead of 'comments'
 
 class FeedbackCreate(FeedbackBase):
-    user_id: str
+    user_id: Optional[str] = None
 
 class Feedback(FeedbackBase):
     id: str
-    user_id: str
-    submitted_at: datetime = Field(default_factory=datetime.utcnow)
+    user_id: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    submitted_at: Optional[datetime] = None  # Backward compatibility
     ai_sentiment: Optional[str] = None  # e.g., "positive" | "neutral" | "negative"
+
+    class Config:
+        from_attributes = True
+
+
+# ---------------------------------------------------
+# 🚻 Washroom Facility Models (NEW)
+# ---------------------------------------------------
+class WashroomFacilityBase(BaseModel):
+    event_id: str
+    name: str
+    gender: Literal["male", "female", "unisex"]
+    floor_level: Optional[str] = None
+    capacity: int = Field(..., gt=0)
+    availability_status: Literal["available", "occupied", "maintenance"] = "available"
+    location_details: Optional[str] = None
+
+class WashroomFacilityCreate(WashroomFacilityBase):
+    pass
+
+class WashroomFacility(WashroomFacilityBase):
+    id: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        from_attributes = True
+
+
+# ---------------------------------------------------
+# 🚪 Emergency Exit Models (NEW)
+# ---------------------------------------------------
+class EmergencyExitBase(BaseModel):
+    event_id: str
+    exit_name: str
+    location: str
+    status: Literal["crowded", "moderate", "clear"] = "clear"
+
+class EmergencyExitCreate(EmergencyExitBase):
+    pass
+
+class EmergencyExit(EmergencyExitBase):
+    id: str
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        from_attributes = True
+
+
+# ---------------------------------------------------
+# 🏢 Zone Models (NEW - replaces area-based crowd density)
+# ---------------------------------------------------
+class ZoneBase(BaseModel):
+    event_id: str
+    name: str
+    capacity: int = Field(..., gt=0)
+    current_density: int = Field(0, ge=0)
+    density_status: Literal["crowded", "moderate", "low"] = "low"
+    image_url: Optional[str] = None
+
+class ZoneCreate(ZoneBase):
+    pass
+
+class Zone(ZoneBase):
+    id: str
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        from_attributes = True
+
+
+# ---------------------------------------------------
+# 🏥 Medical Facility Models (Frontend compatibility)
+# ---------------------------------------------------
+class MedicalFacilityBase(BaseModel):
+    event_id: str
+    facility_name: str
+    facility_type: Literal["hospital", "clinic", "first-aid"]
+    contact_number: str
+    address: Optional[str] = None
+
+class MedicalFacilityCreate(MedicalFacilityBase):
+    pass
+
+class MedicalFacility(MedicalFacilityBase):
+    id: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
         from_attributes = True

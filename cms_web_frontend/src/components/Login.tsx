@@ -28,7 +28,7 @@ export default function Login() {
             <div className="bg-blue-500 p-4 rounded-full mb-4">
               <Users className="w-12 h-12 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Crowd Management System</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">CrowdBuddy</h1>
             <p className="text-blue-200 text-center">Event Organizer Portal</p>
           </div>
 

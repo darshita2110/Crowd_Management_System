@@ -664,6 +664,118 @@ class TestLostPersons:
         stats = response.json()
         assert "total" in stats  # Check 'total' instead of 'total_reports'
         assert "by_status" in stats
+    
+    @pytest.mark.asyncio
+    async def test_upload_lost_person_photo(self, async_client, test_user, test_event):
+        """Test uploading a photo for lost person"""
+        import io
+        
+        # Create a report first
+        create_response = await async_client.post("/lost-persons/", json={
+            "reporter_id": test_user["id"],
+            "reporter_name": "Reporter",
+            "reporter_phone": "+1555777888",
+            "name": "Person With Photo",
+            "age": 35,
+            "gender": "male",
+            "description": "Blue shirt",
+            "last_seen_location": "Main Stage",
+            "last_seen_time": "18:00",
+            "event_id": test_event["id"]
+        })
+        report_id = create_response.json()["id"]
+        
+        # Create a fake image file
+        fake_image = io.BytesIO(b"fake image content for testing")
+        fake_image.name = "test_photo.jpg"
+        
+        # Upload photo
+        response = await async_client.post(
+            f"/lost-persons/{report_id}/photo",
+            files={"file": ("test_photo.jpg", fake_image, "image/jpeg")}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "photo_url" in data
+        assert "filename" in data
+        assert data["message"] == "Photo uploaded successfully"
+        
+        # Verify the report was updated
+        get_response = await async_client.get(f"/lost-persons/{report_id}")
+        assert get_response.status_code == 200
+        report_data = get_response.json()
+        assert report_data["photo_url"] is not None
+    
+    @pytest.mark.asyncio
+    async def test_delete_lost_person_photo(self, async_client, test_user, test_event):
+        """Test deleting a photo for lost person"""
+        import io
+        
+        # Create a report
+        create_response = await async_client.post("/lost-persons/", json={
+            "reporter_id": test_user["id"],
+            "reporter_name": "Reporter",
+            "reporter_phone": "+1555999000",
+            "name": "Person To Delete Photo",
+            "age": 40,
+            "gender": "female",
+            "description": "Red dress",
+            "last_seen_location": "Food Court",
+            "last_seen_time": "19:00",
+            "event_id": test_event["id"]
+        })
+        report_id = create_response.json()["id"]
+        
+        # Upload photo first
+        fake_image = io.BytesIO(b"fake image for deletion test")
+        fake_image.name = "delete_test.jpg"
+        
+        upload_response = await async_client.post(
+            f"/lost-persons/{report_id}/photo",
+            files={"file": ("delete_test.jpg", fake_image, "image/jpeg")}
+        )
+        assert upload_response.status_code == 200
+        
+        # Delete photo
+        delete_response = await async_client.delete(f"/lost-persons/{report_id}/photo")
+        assert delete_response.status_code == 200
+        assert delete_response.json()["message"] == "Photo deleted successfully"
+        
+        # Verify photo was removed
+        get_response = await async_client.get(f"/lost-persons/{report_id}")
+        report_data = get_response.json()
+        assert report_data.get("photo_url") is None
+    
+    @pytest.mark.asyncio
+    async def test_upload_invalid_file_type(self, async_client, test_user, test_event):
+        """Test uploading invalid file type"""
+        import io
+        
+        # Create a report
+        create_response = await async_client.post("/lost-persons/", json={
+            "reporter_id": test_user["id"],
+            "reporter_name": "Reporter",
+            "reporter_phone": "+1555444555",
+            "name": "Invalid File Test",
+            "age": 28,
+            "gender": "male",
+            "description": "White shirt",
+            "last_seen_location": "Parking",
+            "last_seen_time": "20:00",
+            "event_id": test_event["id"]
+        })
+        report_id = create_response.json()["id"]
+        
+        # Try to upload a non-image file
+        fake_file = io.BytesIO(b"not an image")
+        fake_file.name = "test.txt"
+        
+        response = await async_client.post(
+            f"/lost-persons/{report_id}/photo",
+            files={"file": ("test.txt", fake_file, "text/plain")}
+        )
+        assert response.status_code == 400
+        assert "Invalid file type" in response.json()["detail"]
 
 
 # ============================================================================

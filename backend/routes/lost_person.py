@@ -1,12 +1,19 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, UploadFile, File
 from typing import List, Optional
 from datetime import datetime
 import secrets
+import os
+import shutil
+from pathlib import Path
 
 from models import LostPersonReport, LostPersonCreate
 from database import database
 
 router = APIRouter(prefix="/lost-persons", tags=["Lost Persons"])
+
+# Create outputs directory for storing photos
+UPLOAD_DIR = Path("outputs/lost_persons")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 def generate_report_id() -> str:
     """Generate unique report ID"""
@@ -132,12 +139,99 @@ async def update_report_status(report_id: str, status: str):  # Changed paramete
 @router.get("/search/active")
 async def get_active_reports(event_id: Optional[str] = None):
     """Get all active (not found/resolved) lost person reports"""
-    query = {"status": {"$in": ["reported", "searching"]}}
+    query = {"status": {"$in": ["reported", "searching", "missing"]}}  # Added "missing"
     if event_id:
         query["event_id"] = event_id
     
     reports = await database["lost_persons"].find(query).sort("priority", -1).to_list(1000)
     return [LostPersonReport(**{k: v for k, v in report.items() if k != "_id"}) for report in reports]
+
+@router.post("/{report_id}/photo")
+async def upload_lost_person_photo(report_id: str, file: UploadFile = File(...)):
+    """Upload photo for a lost person report"""
+    # Check if report exists
+    report = await database["lost_persons"].find_one({"id": report_id})
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lost person report not found"
+        )
+    
+    # Validate file type
+    allowed_extensions = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    if file_ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid file type. Allowed types: {', '.join(allowed_extensions)}"
+        )
+    
+    # Generate unique filename
+    unique_filename = f"{report_id}_{secrets.token_hex(4)}{file_ext}"
+    file_path = UPLOAD_DIR / unique_filename
+    
+    # Save file
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save file: {str(e)}"
+        )
+    finally:
+        file.file.close()
+    
+    # Update database with photo URL
+    photo_url = f"/outputs/lost_persons/{unique_filename}"
+    await database["lost_persons"].update_one(
+        {"id": report_id},
+        {"$set": {"photo_url": photo_url}}
+    )
+    
+    return {
+        "message": "Photo uploaded successfully",
+        "photo_url": photo_url,
+        "filename": unique_filename
+    }
+
+@router.delete("/{report_id}/photo")
+async def delete_lost_person_photo(report_id: str):
+    """Delete photo for a lost person report"""
+    report = await database["lost_persons"].find_one({"id": report_id})
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lost person report not found"
+        )
+    
+    if not report.get("photo_url"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No photo found for this report"
+        )
+    
+    # Delete file if it exists
+    photo_url = report["photo_url"]
+    filename = photo_url.split("/")[-1]
+    file_path = UPLOAD_DIR / filename
+    
+    if file_path.exists():
+        try:
+            os.remove(file_path)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to delete file: {str(e)}"
+            )
+    
+    # Update database
+    await database["lost_persons"].update_one(
+        {"id": report_id},
+        {"$unset": {"photo_url": ""}}
+    )
+    
+    return {"message": "Photo deleted successfully"}
 
 @router.get("/stats/event/{event_id}")
 async def get_lost_person_stats(event_id: str):

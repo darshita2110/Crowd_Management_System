@@ -638,7 +638,7 @@ class TestLostPersons:
         
         # Update to found
         response = await async_client.patch(
-            f"/lost-persons/{report_id}/status?status=found"  # Changed parameter name
+            f"/lost-persons/{report_id}/status?new_status=found"
         )
         assert response.status_code == 200
         data = response.json()

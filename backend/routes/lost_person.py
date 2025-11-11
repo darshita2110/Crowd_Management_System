@@ -103,10 +103,10 @@ async def get_lost_person_report(report_id: str):
     return LostPersonReport(**{k: v for k, v in report.items() if k != "_id"})
 
 @router.patch("/{report_id}/status")
-async def update_report_status(report_id: str, status: str):  # Changed parameter name
+async def update_report_status(report_id: str, new_status: str):
     """Update lost person report status"""
-    valid_statuses = ["reported", "searching", "found", "resolved", "missing"]  # Added "missing"
-    if status not in valid_statuses:
+    valid_statuses = ["reported", "searching", "found", "resolved", "missing"]
+    if new_status not in valid_statuses:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
@@ -121,7 +121,7 @@ async def update_report_status(report_id: str, status: str):  # Changed paramete
     
     await database["lost_persons"].update_one(
         {"id": report_id},
-        {"$set": {"status": status}}  # Changed from new_status
+        {"$set": {"status": new_status}}
     )
     
     updated_report = await database["lost_persons"].find_one({"id": report_id})

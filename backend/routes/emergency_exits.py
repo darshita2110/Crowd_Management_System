@@ -10,7 +10,7 @@ router = APIRouter(prefix="/emergency-exits", tags=["Emergency Exits"])
 @router.post("/", response_model=EmergencyExit, status_code=201)
 async def create_emergency_exit(exit: EmergencyExitCreate):
     """Create a new emergency exit"""
-    exit_dict = exit.dict()
+    exit_dict = exit.model_dump()
     exit_dict["created_at"] = datetime.utcnow()
     exit_dict["last_updated"] = datetime.utcnow()
     
@@ -55,7 +55,7 @@ async def get_emergency_exit(exit_id: str):
 async def update_emergency_exit(exit_id: str, exit_update: EmergencyExitCreate):
     """Update an emergency exit"""
     try:
-        update_data = exit_update.dict()
+        update_data = exit_update.model_dump()
         update_data["last_updated"] = datetime.utcnow()
         
         result = await database["emergency_exits"].find_one_and_update(

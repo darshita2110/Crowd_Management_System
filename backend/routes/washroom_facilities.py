@@ -10,7 +10,7 @@ router = APIRouter(prefix="/washroom-facilities", tags=["Washroom Facilities"])
 @router.post("/", response_model=WashroomFacility, status_code=201)
 async def create_washroom_facility(facility: WashroomFacilityCreate):
     """Create a new washroom facility"""
-    facility_dict = facility.dict()
+    facility_dict = facility.model_dump()
     facility_dict["created_at"] = datetime.utcnow()
     facility_dict["updated_at"] = datetime.utcnow()
     
@@ -55,7 +55,7 @@ async def get_washroom_facility(facility_id: str):
 async def update_washroom_facility(facility_id: str, facility_update: WashroomFacilityCreate):
     """Update a washroom facility"""
     try:
-        update_data = facility_update.dict()
+        update_data = facility_update.model_dump()
         update_data["updated_at"] = datetime.utcnow()
         
         result = await database["washroom_facilities"].find_one_and_update(

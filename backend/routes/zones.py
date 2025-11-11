@@ -10,7 +10,7 @@ router = APIRouter(prefix="/zones", tags=["Zones"])
 @router.post("/", response_model=Zone, status_code=201)
 async def create_zone(zone: ZoneCreate):
     """Create a new zone for crowd density tracking"""
-    zone_dict = zone.dict()
+    zone_dict = zone.model_dump()
     zone_dict["created_at"] = datetime.utcnow()
     zone_dict["last_updated"] = datetime.utcnow()
     
@@ -55,7 +55,7 @@ async def get_zone(zone_id: str):
 async def update_zone(zone_id: str, zone_update: ZoneCreate):
     """Update a zone"""
     try:
-        update_data = zone_update.dict()
+        update_data = zone_update.model_dump()
         update_data["last_updated"] = datetime.utcnow()
         
         result = await database["zones"].find_one_and_update(

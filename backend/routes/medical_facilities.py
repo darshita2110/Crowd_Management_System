@@ -10,7 +10,7 @@ router = APIRouter(prefix="/medical-facilities", tags=["Medical Facilities"])
 @router.post("/", response_model=MedicalFacility, status_code=201)
 async def create_medical_facility(facility: MedicalFacilityCreate):
     """Create a new medical facility"""
-    facility_dict = facility.dict()
+    facility_dict = facility.model_dump()
     facility_dict["created_at"] = datetime.utcnow()
     
     result = await database["medical_facilities"].insert_one(facility_dict)
@@ -54,7 +54,7 @@ async def get_medical_facility(facility_id: str):
 async def update_medical_facility(facility_id: str, facility_update: MedicalFacilityCreate):
     """Update a medical facility"""
     try:
-        update_data = facility_update.dict()
+        update_data = facility_update.model_dump()
         
         result = await database["medical_facilities"].find_one_and_update(
             {"_id": ObjectId(facility_id)},

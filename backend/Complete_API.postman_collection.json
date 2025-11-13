@@ -2275,17 +2275,13 @@
           "name": "Count People (Upload Image)",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "multipart/form-data"
-              }
-            ],
+            "header": [],
             "body": {
               "mode": "formdata",
               "formdata": [
                 {
                   "key": "file",
+                  "description": "Select an image file containing people to count. ⚠️ FIRST TIME: Model download may take 30-60 seconds!",
                   "type": "file",
                   "src": ""
                 },

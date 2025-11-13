@@ -1,0 +1,5 @@
+# LWCC model weights cache
+# This directory is used to store downloaded model weights for the LWCC library
+# to avoid re-downloading them on every request.
+*
+!.gitignore

@@ -110,9 +110,7 @@ export default function Dashboard() {
         <main className="flex-1 overflow-auto">
           {currentPage === 'events' && (
             <EventsPage
-              events={events}
-              onEventSelect={handleEventSelect}
-              onEventsUpdate={loadEvents}
+              {...({ events, onEventSelect: handleEventSelect, onEventsUpdate: loadEvents } as any)}
             />
           )}
 

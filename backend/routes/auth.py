@@ -45,6 +45,7 @@ async def register_user(user: UserCreate):
 
 @router.post("/login")
 async def login_user(credentials: UserLogin):
+    print("Login attempt for:", credentials.email)
     """Login user and return user info"""
     user = await database["users"].find_one({"email": credentials.email})
     

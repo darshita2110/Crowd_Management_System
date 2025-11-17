@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, AxiosError } from 'axios';
 import type {
   Event,
   Zone,
@@ -23,19 +23,19 @@ const apiClient: AxiosInstance = axios.create({
 
 // Request interceptor for adding auth tokens
 apiClient.interceptors.request.use(
-  (config) => {
+  (config: any) => {
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error: any) => Promise.reject(error)
 );
 
 // Response interceptor for handling errors
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response: any) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
       // Handle unauthorized - redirect to login

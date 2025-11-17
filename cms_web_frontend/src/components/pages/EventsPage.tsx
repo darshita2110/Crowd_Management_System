@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Calendar, MapPin, Users, X, Loader2, Trash2, Edit } from 'lucide-react';
+import { Plus, Calendar, MapPin, Users, X, Loader2, Trash2, Edit, ArrowRight } from 'lucide-react';
 import { 
   createEvent, 
   getAllEvents, 
@@ -13,9 +13,10 @@ import {
 
 interface EventsPageProps {
   organizerId: string; // Pass this from parent component/auth
+  onEventSelect?: (event: EventResponse) => void; // Optional callback to parent
 }
 
-export default function EventsPage({ organizerId }: EventsPageProps) {
+export default function EventsPage({ organizerId, onEventSelect }: EventsPageProps) {
   const [events, setEvents] = useState<EventResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -146,6 +147,12 @@ export default function EventsPage({ organizerId }: EventsPageProps) {
     } catch (error) {
       console.error('Error deleting event:', error);
       alert('Failed to delete event');
+    }
+  };
+
+  const handleViewDashboard = (event: EventResponse) => {
+    if (onEventSelect) {
+      onEventSelect(event);
     }
   };
 
@@ -289,6 +296,15 @@ export default function EventsPage({ organizerId }: EventsPageProps) {
                   </span>
                 </div>
               </div>
+
+              {/* View Dashboard Button */}
+              <button
+                onClick={() => handleViewDashboard(event)}
+                className="w-full mt-4 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 py-2 rounded-lg font-medium transition flex items-center justify-center gap-2 border border-purple-400/30"
+              >
+                View Dashboard
+                <ArrowRight className="w-4 h-4" />
+              </button>
 
               <div className="mt-4 pt-4 border-t border-white/10 flex gap-2">
                 <button

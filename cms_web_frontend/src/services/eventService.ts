@@ -50,7 +50,8 @@ export interface DeleteResponse {
 // Create a new event
 export const createEvent = async (eventData: EventPayload): Promise<EventResponse> => {
   try {
-    console.log('Creating event with data:', eventData);
+    console.log('Creating event with data:', JSON.stringify(eventData, null, 2));
+    console.log('API URL:', `${API_BASE_URL}/events/`);
     
     const response = await fetch(`${API_BASE_URL}/events/`, {
       method: 'POST',
@@ -60,29 +61,59 @@ export const createEvent = async (eventData: EventPayload): Promise<EventRespons
       body: JSON.stringify(eventData),
     });
 
-    const data = await response.json();
-    console.log('Response:', response.status, data);
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
+
+    // Try to get response body regardless of status
+    let data;
+    try {
+      data = await response.json();
+      console.log('Response data:', data);
+    } catch (parseError) {
+      console.error('Failed to parse response:', parseError);
+      const text = await response.text();
+      console.error('Response text:', text);
+      throw new Error(`Server returned invalid JSON. Status: ${response.status}`);
+    }
 
     if (!response.ok) {
-      throw new Error(data.detail || data.message || 'Failed to create event');
+      const errorMsg = data?.detail || data?.message || JSON.stringify(data);
+      throw new Error(errorMsg);
     }
 
     return data;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create event error:', error);
-    throw error;
+    // Make sure we're throwing a proper Error object with a message
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(String(error));
   }
 };
 
 // Get all events
 export const getAllEvents = async (): Promise<EventResponse[]> => {
-  const response = await fetch(`${API_BASE_URL}/events/`);
+  try {
+    console.log('Fetching events from:', `${API_BASE_URL}/events/`);
+    
+    const response = await fetch(`${API_BASE_URL}/events/`);
+    
+    console.log('Fetch response status:', response.status);
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch events');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Error response:', errorData);
+      throw new Error(errorData.detail || errorData.message || 'Failed to fetch events');
+    }
+
+    const data = await response.json();
+    console.log('Events fetched:', data);
+    return data;
+  } catch (error) {
+    console.error('Fetch events error:', error);
+    throw error;
   }
-
-  return response.json();
 };
 
 // Get events by status

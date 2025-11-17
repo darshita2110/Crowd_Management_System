@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, AlertTriangle, Activity, MessageSquare, LogOut, Plus, Calendar, Droplets } from 'lucide-react';
+import { LayoutDashboard, Users, AlertTriangle, Activity, MessageSquare, LogOut, Calendar, Droplets } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Event } from '../types';
@@ -10,13 +10,14 @@ import MedicalPage from './pages/MedicalPage';
 import EmergencyExitsPage from './pages/EmergencyExitsPage';
 import FeedbackPage from './pages/FeedbackPage';
 import WashroomFacilitiesPage from './pages/WashroomFacilitiesPage';
+import { EventResponse } from '../services/eventService';
 
 type Page = 'events' | 'event-dashboard' | 'lost-persons' | 'medical' | 'emergency-exits' | 'feedback' | 'washrooms';
 
 export default function Dashboard() {
   const { organizer, logout } = useAuth();
   const [currentPage, setCurrentPage] = useState<Page>('events');
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<EventResponse | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleEventSelect = (event: Event) => {
+  const handleEventSelect = (event: EventResponse) => {
     setSelectedEvent(event);
     setCurrentPage('event-dashboard');
   };
@@ -110,7 +111,8 @@ export default function Dashboard() {
         <main className="flex-1 overflow-auto">
           {currentPage === 'events' && (
             <EventsPage
-              {...({ events, onEventSelect: handleEventSelect, onEventsUpdate: loadEvents } as any)}
+              organizerId={organizer?.organizer_id || ''}
+              onEventSelect={handleEventSelect}
             />
           )}
 
@@ -130,7 +132,7 @@ export default function Dashboard() {
           )}
 
           {currentPage === 'washrooms' && (
-            <WashroomFacilitiesPage events={events} />
+            <WashroomFacilitiesPage />
           )}
 
           {currentPage === 'emergency-exits' && (

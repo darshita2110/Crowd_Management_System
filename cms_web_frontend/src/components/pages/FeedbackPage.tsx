@@ -111,12 +111,20 @@ export default function FeedbackPage({ events }: FeedbackPageProps) {
         <select
           value={selectedEvent}
           onChange={(e) => setSelectedEvent(e.target.value)}
-          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400 appearance-none cursor-pointer"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 1rem center',
+            backgroundSize: '1.5rem'
+          }}
           disabled={loading}
         >
-          <option value="">Select an event</option>
+          <option value="" disabled hidden>Select an event</option>
           {events.map((event) => (
-            <option key={event.id} value={event.id}>{event.name}</option>
+            <option key={event.id} value={event.id} className="bg-gray-800 text-white">
+              {event.name}
+            </option>
           ))}
         </select>
       </div>

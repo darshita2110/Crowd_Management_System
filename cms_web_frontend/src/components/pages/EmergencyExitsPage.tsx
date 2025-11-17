@@ -135,10 +135,18 @@ export default function EmergencyExitsPage({ events }: EmergencyExitsPageProps) 
           value={selectedEvent}
           onChange={(e) => setSelectedEvent(e.target.value)}
           className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+          style={{ 
+            backgroundImage: 'none',
+            appearance: 'none',
+            WebkitAppearance: 'none',
+            MozAppearance: 'none'
+          }}
         >
-          <option value="">Select an event</option>
+          <option value="" className="bg-slate-800 text-white">Select an event</option>
           {events.map((event) => (
-            <option key={event.id} value={event.id}>{event.name}</option>
+            <option key={event.id} value={event.id} className="bg-slate-800 text-white">
+              {event.name}
+            </option>
           ))}
         </select>
 

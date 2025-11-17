@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Upload, X } from 'lucide-react';
+import { ArrowLeft, Plus, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { Event, Zone } from '../../types';
+import { Zone } from '../../types';
+import { EventResponse } from '../../services/eventService';
 
 interface EventDashboardProps {
-  event: Event;
+  event: EventResponse;
   onBack: () => void;
 }
 
@@ -87,7 +88,7 @@ export default function EventDashboard({ event, onBack }: EventDashboardProps) {
         <div className="flex flex-wrap gap-4 text-gray-300">
           <span>{event.location}</span>
           <span>•</span>
-          <span>{new Date(event.date).toLocaleDateString()}</span>
+          <span>{new Date(event.start_time).toLocaleDateString()}</span>
           <span>•</span>
           <span>{event.attendees_count.toLocaleString()} attendees</span>
         </div>

@@ -12,6 +12,9 @@ class ApiConstants {
   static const String lostPersonsEndpoint = '/lost-persons/';
   static const String feedbackEndpoint = '/feedback/';
   static const String alertsEndpoint = '/alerts/';  // ✅ ADD THIS LINE
+  static const String washroomFacilitiesEndpoint = '/washroom-facilities/';
+  static const String zonesEndpoint = '/zones/';
+  static const String emergencyExitsEndpoint = '/emergency-exits/';
 
   static String getUrl(String endpoint) {
     return '$baseUrl$endpoint';

@@ -1,21 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Plus, DoorOpen, X, Trash2, AlertCircle } from 'lucide-react';
-import { emergencyExitsAPI, EmergencyExit } from '../../services/emergencyExitsAPI';
+import { Plus, DoorOpen, X, Trash2, AlertCircle, RefreshCw } from 'lucide-react';
+import { emergencyExitsAPI, EmergencyExit, Event } from '../../services/emergencyExitsAPI';
 
-interface Event {
-  id: string;
-  name: string;
-}
-
-interface EmergencyExitsPageProps {
-  events: Event[];
-}
-
-export default function EmergencyExitsPage({ events }: EmergencyExitsPageProps) {
+export default function EmergencyExitsPage() {
   const [exits, setExits] = useState<EmergencyExit[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<string>('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingEvents, setLoadingEvents] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     exit_name: '',
@@ -23,11 +16,33 @@ export default function EmergencyExitsPage({ events }: EmergencyExitsPageProps) 
     status: 'clear' as 'crowded' | 'moderate' | 'clear'
   });
 
+  // Load events on component mount
+  useEffect(() => {
+    loadEvents();
+  }, []);
+
+  // Load exits when event is selected
   useEffect(() => {
     if (selectedEvent) {
       loadExits();
+    } else {
+      setExits([]);
     }
   }, [selectedEvent]);
+
+  const loadEvents = async () => {
+    try {
+      setLoadingEvents(true);
+      setError(null);
+      const data = await emergencyExitsAPI.getAllEvents();
+      setEvents(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load events');
+      console.error('Error loading events:', err);
+    } finally {
+      setLoadingEvents(false);
+    }
+  };
 
   const loadExits = async () => {
     try {
@@ -114,7 +129,18 @@ export default function EmergencyExitsPage({ events }: EmergencyExitsPageProps) 
 
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-bold text-white mb-2">Emergency Exits</h1>
+      <div className="flex justify-between items-center mb-2">
+        <h1 className="text-3xl font-bold text-white">Emergency Exits</h1>
+        <button
+          onClick={loadEvents}
+          disabled={loadingEvents}
+          className="flex items-center gap-2 bg-white/10 hover:bg-white/20 disabled:bg-white/5 text-white px-4 py-2 rounded-lg font-medium transition"
+          title="Refresh events"
+        >
+          <RefreshCw className={`w-4 h-4 ${loadingEvents ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
+      </div>
       <p className="text-gray-300 mb-8">Monitor and update emergency exit status in real-time</p>
 
       {error && (
@@ -134,7 +160,8 @@ export default function EmergencyExitsPage({ events }: EmergencyExitsPageProps) 
         <select
           value={selectedEvent}
           onChange={(e) => setSelectedEvent(e.target.value)}
-          className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+          disabled={loadingEvents || events.length === 0}
+          className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ 
             backgroundImage: 'none',
             appearance: 'none',
@@ -142,10 +169,12 @@ export default function EmergencyExitsPage({ events }: EmergencyExitsPageProps) 
             MozAppearance: 'none'
           }}
         >
-          <option value="" className="bg-slate-800 text-white">Select an event</option>
+          <option value="" className="bg-slate-800 text-white">
+            {loadingEvents ? 'Loading events...' : events.length === 0 ? 'No events available' : 'Select an event'}
+          </option>
           {events.map((event) => (
             <option key={event.id} value={event.id} className="bg-slate-800 text-white">
-              {event.name}
+              {event.name} ({event.status})
             </option>
           ))}
         </select>
@@ -153,7 +182,7 @@ export default function EmergencyExitsPage({ events }: EmergencyExitsPageProps) 
         {selectedEvent && (
           <button
             onClick={() => setShowAddModal(true)}
-            disabled={loading}
+            disabled={loading || loadingEvents}
             className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition"
           >
             <Plus className="w-5 h-5" />
@@ -162,14 +191,29 @@ export default function EmergencyExitsPage({ events }: EmergencyExitsPageProps) 
         )}
       </div>
 
-      {loading && !exits.length && (
+      {loadingEvents && (
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+          <p className="text-gray-400 mt-4">Loading events...</p>
+        </div>
+      )}
+
+      {!loadingEvents && events.length === 0 && (
+        <div className="text-center py-12 bg-white/5 rounded-xl border border-white/10">
+          <AlertCircle className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+          <p className="text-gray-400 text-lg">No events found</p>
+          <p className="text-gray-500 text-sm mt-2">Create an event first to add emergency exits</p>
+        </div>
+      )}
+
+      {loading && !exits.length && selectedEvent && !loadingEvents && (
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
           <p className="text-gray-400 mt-4">Loading exits...</p>
         </div>
       )}
 
-      {selectedEvent && !loading && exits.length === 0 && (
+      {selectedEvent && !loading && !loadingEvents && exits.length === 0 && (
         <div className="text-center py-12 bg-white/5 rounded-xl border border-white/10">
           <DoorOpen className="w-16 h-16 text-gray-500 mx-auto mb-4" />
           <p className="text-gray-400 text-lg">No emergency exits found for this event</p>
@@ -177,7 +221,7 @@ export default function EmergencyExitsPage({ events }: EmergencyExitsPageProps) 
         </div>
       )}
 
-      {selectedEvent && exits.length > 0 && (
+      {selectedEvent && exits.length > 0 && !loadingEvents && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {exits.map((exit) => (
             <div

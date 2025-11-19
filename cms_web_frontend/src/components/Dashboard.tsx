@@ -124,11 +124,11 @@ export default function Dashboard() {
           )}
 
           {currentPage === 'lost-persons' && (
-            <LostPersonsPage events={events} />
+            <LostPersonsPage />
           )}
 
           {currentPage === 'medical' && (
-            <MedicalPage events={events} />
+            <MedicalPage />
           )}
 
           {currentPage === 'washrooms' && (
@@ -136,7 +136,7 @@ export default function Dashboard() {
           )}
 
           {currentPage === 'emergency-exits' && (
-            <EmergencyExitsPage events={events} />
+            <EmergencyExitsPage />
           )}
 
           {currentPage === 'feedback' && (

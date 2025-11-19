@@ -1,29 +1,74 @@
 // src/pages/LostPersonsPage.tsx
 import { useState, useEffect } from 'react';
-import { Search, AlertCircle, CheckCircle, Clock, Phone, MapPin, Filter, Upload } from 'lucide-react';
+import { Search, AlertCircle, CheckCircle, Clock, Phone, MapPin, Filter, User, Loader2 } from 'lucide-react';
 import { lostPersonsService, LostPerson, LostPersonStats } from '../../services/lostPersonsService';
+import { getAllEvents, EventResponse } from '../../services/eventService';
 
-interface Event {
-  id: string;
-  name: string;
+// Component to handle photo display with error handling
+function PersonPhoto({ person }: { person: LostPerson }) {
+  const [imageError, setImageError] = useState(false);
+  const photoUrl = person.photo_url ? lostPersonsService.getPhotoUrl(person.photo_url) : null;
+
+  // Reset error state when person changes
+  useEffect(() => {
+    setImageError(false);
+  }, [person.id, photoUrl]);
+
+  if (!photoUrl || imageError) {
+    return (
+      <div className="w-24 h-24 rounded-lg bg-white/5 flex flex-col items-center justify-center border border-white/10">
+        <User className="w-8 h-8 text-gray-500 mb-1" />
+        <span className="text-xs text-gray-500">No Photo</span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={photoUrl}
+      alt={person.name}
+      className="w-24 h-24 rounded-lg object-cover border border-white/10"
+      onError={() => setImageError(true)}
+    />
+  );
 }
 
-interface LostPersonsPageProps {
-  events: Event[];
-}
-
-export default function LostPersonsPage({ events }: LostPersonsPageProps) {
+export default function LostPersonsPage() {
   const [lostPersons, setLostPersons] = useState<LostPerson[]>([]);
+  const [events, setEvents] = useState<EventResponse[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [stats, setStats] = useState<LostPersonStats | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingEvents, setLoadingEvents] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Load events on mount
   useEffect(() => {
-    loadLostPersons();
-  }, [selectedEvent, filterStatus, filterPriority]);
+    loadEvents();
+  }, []);
+
+  // Load lost persons when filters change
+  useEffect(() => {
+    if (!loadingEvents) {
+      loadLostPersons();
+    }
+  }, [selectedEvent, filterStatus, filterPriority, loadingEvents]);
+
+  const loadEvents = async () => {
+    try {
+      setLoadingEvents(true);
+      const eventsData = await getAllEvents();
+      setEvents(eventsData);
+    } catch (err) {
+      console.error('Error loading events:', err);
+      setError('Failed to load events');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setLoadingEvents(false);
+    }
+  };
 
   const loadLostPersons = async () => {
     setLoading(true);
@@ -32,7 +77,8 @@ export default function LostPersonsPage({ events }: LostPersonsPageProps) {
     try {
       let data: LostPerson[] = [];
 
-      // Apply filters based on selection
+      // Apply filters based on selection priority
+      // Priority: Status > Priority > Event > All
       if (filterStatus !== 'all') {
         data = await lostPersonsService.getReportsByStatus(filterStatus);
       } else if (filterPriority !== 'all') {
@@ -52,25 +98,17 @@ export default function LostPersonsPage({ events }: LostPersonsPageProps) {
 
       // Load stats if an event is selected
       if (selectedEvent !== 'all') {
-        const eventStats = await lostPersonsService.getEventStats(selectedEvent);
-        setStats(eventStats);
+        try {
+          const eventStats = await lostPersonsService.getEventStats(selectedEvent);
+          setStats(eventStats);
+        } catch (err) {
+          // If stats API fails, calculate manually
+          console.warn('Failed to fetch event stats, calculating manually');
+          calculateStatsManually(data);
+        }
       } else {
         // Calculate stats manually from all data
-        setStats({
-          total: data.length,
-          by_status: {
-            reported: data.filter(p => p.status === 'missing').length,
-            searching: data.filter(p => p.status === 'searching').length,
-            found: data.filter(p => p.status === 'found').length,
-            resolved: data.filter(p => p.status === 'resolved').length,
-          },
-          by_priority: {
-            critical: data.filter(p => p.priority === 'critical').length,
-            high: data.filter(p => p.priority === 'high').length,
-            medium: data.filter(p => p.priority === 'medium').length,
-            low: data.filter(p => p.priority === 'low').length,
-          },
-        });
+        calculateStatsManually(data);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load lost persons');
@@ -80,10 +118,28 @@ export default function LostPersonsPage({ events }: LostPersonsPageProps) {
     }
   };
 
+  const calculateStatsManually = (data: LostPerson[]) => {
+    setStats({
+      total: data.length,
+      by_status: {
+        reported: data.filter(p => p.status === 'missing').length,
+        searching: data.filter(p => p.status === 'searching').length,
+        found: data.filter(p => p.status === 'found').length,
+        resolved: data.filter(p => p.status === 'resolved').length,
+      },
+      by_priority: {
+        critical: data.filter(p => p.priority === 'critical').length,
+        high: data.filter(p => p.priority === 'high').length,
+        medium: data.filter(p => p.priority === 'medium').length,
+        low: data.filter(p => p.priority === 'low').length,
+      },
+    });
+  };
+
   const updateStatus = async (id: string, status: 'searching' | 'found' | 'resolved') => {
     try {
-      console.log('Updating status:', { id, status }); // Debug log
-      setError(null); // Clear previous errors
+      console.log('Updating status:', { id, status });
+      setError(null);
       await lostPersonsService.updateStatus(id, status);
       await loadLostPersons();
     } catch (err) {
@@ -93,16 +149,6 @@ export default function LostPersonsPage({ events }: LostPersonsPageProps) {
       
       // Auto-clear error after 5 seconds
       setTimeout(() => setError(null), 5000);
-    }
-  };
-
-  const handlePhotoUpload = async (reportId: string, file: File) => {
-    try {
-      await lostPersonsService.uploadPhoto(reportId, file);
-      await loadLostPersons();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to upload photo');
-      console.error('Error uploading photo:', err);
     }
   };
 
@@ -131,14 +177,20 @@ export default function LostPersonsPage({ events }: LostPersonsPageProps) {
     }
   };
 
+  const getEventName = (eventId: string) => {
+    const event = events.find(e => e.id === eventId);
+    return event ? event.name : 'Unknown Event';
+  };
+
   return (
     <div className="p-8">
       <h1 className="text-3xl font-bold text-white mb-2">Lost Persons Management</h1>
-      <p className="text-gray-300 mb-8">Track and manage lost person reports</p>
+      <p className="text-gray-300 mb-8">Track and manage lost person reports across all events</p>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-500/20 border border-red-400/30 rounded-lg text-red-300">
-          {error}
+        <div className="mb-6 p-4 bg-red-500/20 border border-red-400/30 rounded-lg text-red-300 flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
@@ -195,7 +247,8 @@ export default function LostPersonsPage({ events }: LostPersonsPageProps) {
           <select
             value={selectedEvent}
             onChange={(e) => setSelectedEvent(e.target.value)}
-            className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400 appearance-none cursor-pointer"
+            disabled={loadingEvents}
+            className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400 appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
               backgroundPosition: 'right 0.5rem center',
@@ -204,7 +257,9 @@ export default function LostPersonsPage({ events }: LostPersonsPageProps) {
               paddingRight: '2.5rem'
             }}
           >
-            <option value="all" className="bg-gray-800 text-white">All Events</option>
+            <option value="all" className="bg-gray-800 text-white">
+              {loadingEvents ? 'Loading events...' : 'All Events'}
+            </option>
             {events.map((event) => (
               <option key={event.id} value={event.id} className="bg-gray-800 text-white">
                 {event.name}
@@ -267,7 +322,7 @@ export default function LostPersonsPage({ events }: LostPersonsPageProps) {
       {/* Loading State */}
       {loading && (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-400"></div>
+          <Loader2 className="inline-block w-12 h-12 animate-spin text-blue-400" />
           <p className="text-gray-300 mt-4">Loading lost persons...</p>
         </div>
       )}
@@ -278,6 +333,11 @@ export default function LostPersonsPage({ events }: LostPersonsPageProps) {
           {lostPersons.length === 0 ? (
             <div className="col-span-2 text-center py-12 text-gray-400">
               No lost person reports found
+              {selectedEvent !== 'all' && (
+                <p className="text-sm mt-2">
+                  Try selecting "All Events" or changing your filters
+                </p>
+              )}
             </div>
           ) : (
             lostPersons.map((person) => (
@@ -286,17 +346,7 @@ export default function LostPersonsPage({ events }: LostPersonsPageProps) {
                 className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 hover:border-white/30 transition"
               >
                 <div className="flex gap-4">
-                  {person.photo_url ? (
-                    <img
-                      src={person.photo_url}
-                      alt={person.name}
-                      className="w-24 h-24 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <div className="w-24 h-24 rounded-lg bg-white/5 flex items-center justify-center">
-                      <Upload className="w-8 h-8 text-gray-500" />
-                    </div>
-                  )}
+                  <PersonPhoto person={person} />
 
                   <div className="flex-1">
                     <div className="flex items-start justify-between mb-3">
@@ -311,6 +361,14 @@ export default function LostPersonsPage({ events }: LostPersonsPageProps) {
                       </div>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(person.status)}`}>
                         {person.status}
+                      </span>
+                    </div>
+
+                    {/* Event Badge */}
+                    <div className="mb-3">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-500/20 text-purple-300 text-xs rounded-full border border-purple-400/30">
+                        <MapPin className="w-3 h-3" />
+                        {getEventName(person.event_id)}
                       </span>
                     </div>
 

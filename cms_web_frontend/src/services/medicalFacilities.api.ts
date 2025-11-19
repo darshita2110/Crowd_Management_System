@@ -1,5 +1,4 @@
 import { API_BASE_URL } from '../utils/constants';
-import { MedicalFacility } from '../types';
 
 // Types for API requests
 export interface CreateMedicalFacilityRequest {
@@ -34,6 +33,8 @@ class MedicalFacilitiesAPI {
    */
   async getFacilitiesByEvent(eventId: string): Promise<MedicalFacilityResponse[]> {
     try {
+      console.log('Fetching facilities for event:', eventId);
+      
       const response = await fetch(`${this.baseUrl}/?event_id=${eventId}`, {
         method: 'GET',
         headers: {
@@ -41,11 +42,14 @@ class MedicalFacilitiesAPI {
         },
       });
 
+      console.log('Facilities response status:', response.status);
+
       if (!response.ok) {
         throw new Error(`Failed to fetch facilities: ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('Facilities fetched:', data);
       return data;
     } catch (error) {
       console.error('Error fetching medical facilities:', error);
@@ -87,6 +91,8 @@ class MedicalFacilitiesAPI {
     facilityData: CreateMedicalFacilityRequest
   ): Promise<MedicalFacilityResponse> {
     try {
+      console.log('Creating facility with data:', facilityData);
+      
       const response = await fetch(`${this.baseUrl}/`, {
         method: 'POST',
         headers: {
@@ -95,11 +101,15 @@ class MedicalFacilitiesAPI {
         body: JSON.stringify(facilityData),
       });
 
+      console.log('Create facility response status:', response.status);
+
       if (!response.ok) {
-        throw new Error(`Failed to create facility: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData?.detail || `Failed to create facility: ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('Facility created:', data);
       return data;
     } catch (error) {
       console.error('Error creating medical facility:', error);

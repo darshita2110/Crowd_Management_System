@@ -222,15 +222,6 @@ export default function WashroomFacilitiesPage() {
     resetForm();
   };
 
-  const getGenderIcon = (gender: string): string => {
-    switch (gender) {
-      case 'male': return '♂';
-      case 'female': return '♀';
-      case 'unisex': return '⚬';
-      default: return '•';
-    }
-  };
-
   const getGenderColor = (gender: string): string => {
     switch (gender) {
       case 'male':
@@ -272,12 +263,7 @@ export default function WashroomFacilitiesPage() {
 
   const selectedEventData = events.find(e => e.id === selectedEvent);
 
-  interface WashroomFormProps {
-    onSubmit: (e: React.FormEvent) => void;
-    isEdit?: boolean;
-  }
-
-  const WashroomForm = ({ onSubmit, isEdit = false }: WashroomFormProps) => (
+  const renderWashroomForm = (onSubmit: (e: React.FormEvent) => void, isEdit = false) => (
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -287,10 +273,11 @@ export default function WashroomFacilitiesPage() {
           type="text"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
           placeholder="e.g., Main Floor Male"
           required
           disabled={loading}
+          autoComplete="off"
         />
       </div>
 
@@ -301,12 +288,12 @@ export default function WashroomFacilitiesPage() {
         <select
           value={formData.gender}
           onChange={(e) => setFormData({ ...formData, gender: e.target.value as 'male' | 'female' | 'unisex' })}
-          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent appearance-none cursor-pointer"
           disabled={loading}
         >
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-          <option value="unisex">Unisex</option>
+          <option value="male" className="bg-slate-800 text-white">Male</option>
+          <option value="female" className="bg-slate-800 text-white">Female</option>
+          <option value="unisex" className="bg-slate-800 text-white">Unisex</option>
         </select>
       </div>
 
@@ -318,9 +305,10 @@ export default function WashroomFacilitiesPage() {
           type="text"
           value={formData.floor_level}
           onChange={(e) => setFormData({ ...formData, floor_level: e.target.value })}
-          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
           placeholder="e.g., Ground Floor, 1st Floor"
           disabled={loading}
+          autoComplete="off"
         />
       </div>
 
@@ -332,10 +320,11 @@ export default function WashroomFacilitiesPage() {
           type="number"
           value={formData.capacity}
           onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) || 1 })}
-          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
           min="1"
           required
           disabled={loading}
+          autoComplete="off"
         />
       </div>
 
@@ -346,10 +335,11 @@ export default function WashroomFacilitiesPage() {
         <textarea
           value={formData.location_details}
           onChange={(e) => setFormData({ ...formData, location_details: e.target.value })}
-          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none"
           placeholder="e.g., Near entrance, wheelchair accessible"
           rows={2}
           disabled={loading}
+          autoComplete="off"
         />
       </div>
 
@@ -641,7 +631,7 @@ export default function WashroomFacilitiesPage() {
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <WashroomForm onSubmit={handleSubmit} />
+            {renderWashroomForm(handleSubmit)}
           </div>
         </div>
       )}
@@ -660,7 +650,7 @@ export default function WashroomFacilitiesPage() {
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <WashroomForm onSubmit={handleUpdate} isEdit={true} />
+            {renderWashroomForm(handleUpdate, true)}
           </div>
         </div>
       )}

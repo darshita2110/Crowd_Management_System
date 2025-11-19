@@ -1,17 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Star, TrendingUp, BarChart3, MessageSquare, AlertCircle } from 'lucide-react';
-import { Event } from '../../types';
 import {
-  getFeedbackByEvent,
   getEventFeedbackStats,
   getRecentEventFeedback,
   FeedbackResponse,
   FeedbackStatsResponse
 } from '../../services/feedbackApi';
-
-interface FeedbackPageProps {
-  events: Event[];
-}
+import { getAllEvents, EventResponse } from '../../services/eventService';
 
 interface ProcessedStats {
   avgRating: number;
@@ -24,13 +19,21 @@ interface ProcessedStats {
   };
 }
 
-export default function FeedbackPage({ events }: FeedbackPageProps) {
+export default function FeedbackPage() {
+  const [events, setEvents] = useState<EventResponse[]>([]);
   const [feedback, setFeedback] = useState<FeedbackResponse[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<string>('');
   const [stats, setStats] = useState<ProcessedStats | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingEvents, setLoadingEvents] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Load events on component mount
+  useEffect(() => {
+    loadEvents();
+  }, []);
+
+  // Load feedback when event is selected
   useEffect(() => {
     if (selectedEvent) {
       loadFeedbackData();
@@ -39,6 +42,19 @@ export default function FeedbackPage({ events }: FeedbackPageProps) {
       setStats(null);
     }
   }, [selectedEvent]);
+
+  const loadEvents = async () => {
+    try {
+      setLoadingEvents(true);
+      const eventsData = await getAllEvents();
+      setEvents(eventsData);
+    } catch (err) {
+      console.error('Error loading events:', err);
+      setError('Failed to load events. Please try again.');
+    } finally {
+      setLoadingEvents(false);
+    }
+  };
 
   const loadFeedbackData = async () => {
     setLoading(true);
@@ -102,12 +118,24 @@ export default function FeedbackPage({ events }: FeedbackPageProps) {
     return colors[sentiment] || 'text-gray-400 bg-gray-500/20 border-gray-400/30';
   };
 
+  const getEventStatusBadge = (status: string) => {
+    const badges: Record<string, string> = {
+      live: 'bg-green-500/20 text-green-300 border-green-400/30',
+      upcoming: 'bg-blue-500/20 text-blue-300 border-blue-400/30',
+      completed: 'bg-gray-500/20 text-gray-300 border-gray-400/30'
+    };
+    return badges[status] || 'bg-gray-500/20 text-gray-300 border-gray-400/30';
+  };
+
   return (
     <div className="p-8">
       <h1 className="text-3xl font-bold text-white mb-2">Feedback Analysis</h1>
       <p className="text-gray-300 mb-8">Analyze user feedback and generate insights</p>
 
       <div className="mb-8">
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Select Event
+        </label>
         <select
           value={selectedEvent}
           onChange={(e) => setSelectedEvent(e.target.value)}
@@ -118,15 +146,35 @@ export default function FeedbackPage({ events }: FeedbackPageProps) {
             backgroundPosition: 'right 1rem center',
             backgroundSize: '1.5rem'
           }}
-          disabled={loading}
+          disabled={loadingEvents || loading}
         >
-          <option value="" disabled hidden>Select an event</option>
+          <option value="" disabled hidden>
+            {loadingEvents ? 'Loading events...' : 'Select an event'}
+          </option>
           {events.map((event) => (
             <option key={event.id} value={event.id} className="bg-gray-800 text-white">
-              {event.name}
+              {event.name} - {event.status} ({new Date(event.start_time).toLocaleDateString()})
             </option>
           ))}
         </select>
+        
+        {selectedEvent && events.length > 0 && (
+          <div className="mt-3 flex items-center gap-3">
+            {(() => {
+              const event = events.find(e => e.id === selectedEvent);
+              return event ? (
+                <>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getEventStatusBadge(event.status)}`}>
+                    {event.status}
+                  </span>
+                  <span className="text-sm text-gray-400">
+                    {event.location} • {event.attendees_count} / {event.capacity} attendees
+                  </span>
+                </>
+              ) : null;
+            })()}
+          </div>
+        )}
       </div>
 
       {error && (
@@ -274,16 +322,16 @@ export default function FeedbackPage({ events }: FeedbackPageProps) {
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3 flex-wrap">
                         {renderStars(item.rating)}
-                        <span className={`text-sm px-2 py-1 rounded-full capitalize ${getSentimentColor(item.ai_sentiment)}`}>
+                        <span className={`text-sm px-2 py-1 rounded-full capitalize border ${getSentimentColor(item.ai_sentiment)}`}>
                           {item.ai_sentiment}
                         </span>
                         {item.category && (
-                          <span className="text-sm px-2 py-1 rounded-full bg-gray-500/20 text-gray-300 capitalize">
+                          <span className="text-sm px-2 py-1 rounded-full bg-gray-500/20 text-gray-300 capitalize border border-gray-400/30">
                             {item.category}
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-gray-400 whitespace-nowrap ml-2">
                         {new Date(item.created_at).toLocaleDateString()}
                       </span>
                     </div>
@@ -302,6 +350,13 @@ export default function FeedbackPage({ events }: FeedbackPageProps) {
         <div className="text-center py-12">
           <MessageSquare className="w-16 h-16 text-gray-500 mx-auto mb-4" />
           <p className="text-gray-400">No feedback data available for this event.</p>
+        </div>
+      )}
+
+      {!selectedEvent && !loadingEvents && (
+        <div className="text-center py-12">
+          <BarChart3 className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+          <p className="text-gray-400">Select an event to view feedback analysis</p>
         </div>
       )}
     </div>

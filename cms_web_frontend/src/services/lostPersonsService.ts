@@ -21,6 +21,19 @@ export interface LostPerson {
   created_at: string;
 }
 
+export interface CreateLostPersonPayload {
+  reporter_id: string;
+  reporter_name: string;
+  age: number;
+  gender: string;
+  description: string;
+  last_seen_location: string;
+  last_seen_time: string;
+  event_id: string;
+  name: string;
+  reporter_phone: string;
+}
+
 export interface LostPersonStats {
   total: number;
   by_status: {
@@ -37,17 +50,10 @@ export interface LostPersonStats {
   };
 }
 
-export interface CreateLostPersonPayload {
-  reporter_id: string;
-  reporter_name: string;
-  age: number;
-  gender: string;
-  description: string;
-  last_seen_location: string;
-  last_seen_time: string;
-  event_id: string;
-  name: string;
-  reporter_phone: string;
+export interface PhotoUploadResponse {
+  message: string;
+  photo_url: string;
+  filename: string;
 }
 
 class LostPersonsService {
@@ -57,9 +63,9 @@ class LostPersonsService {
     this.baseUrl = `${API_BASE_URL}/lost-persons`;
   }
 
-  // Create a new lost person report
+  // API 1 & 2: Create a new lost person report (POST /lost-persons/)
   async createReport(payload: CreateLostPersonPayload): Promise<LostPerson> {
-    const response = await fetch(`${this.baseUrl}/`, {
+    const response = await fetch(this.baseUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -68,129 +74,203 @@ class LostPersonsService {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to create lost person report');
+      const error = await response.json().catch(() => ({ message: 'Failed to create report' }));
+      throw new Error(error.message || `HTTP error! status: ${response.status}`);
     }
 
     return response.json();
   }
 
-  // Get all lost persons
+  // API 3: Get all lost person reports (GET /lost-persons/)
   async getAllReports(): Promise<LostPerson[]> {
-    const response = await fetch(`${this.baseUrl}/`);
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch lost persons');
-    }
-
-    return response.json();
-  }
-
-  // Get lost persons by event ID
-  async getReportsByEvent(eventId: string): Promise<LostPerson[]> {
-    const response = await fetch(`${this.baseUrl}/?event_id=${eventId}`);
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch lost persons by event');
-    }
-
-    return response.json();
-  }
-
-  // Get lost persons by status
-  async getReportsByStatus(status: string): Promise<LostPerson[]> {
-    const response = await fetch(`${this.baseUrl}/?status=${status}`);
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch lost persons by status');
-    }
-
-    return response.json();
-  }
-
-  // Get lost persons by priority
-  async getReportsByPriority(priority: string): Promise<LostPerson[]> {
-    const response = await fetch(`${this.baseUrl}/?priority=${priority}`);
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch lost persons by priority');
-    }
-
-    return response.json();
-  }
-
-  // Get a specific report by ID
-  async getReportById(reportId: string): Promise<LostPerson[]> {
-    const response = await fetch(`${this.baseUrl}/${reportId}`);
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch lost person report');
-    }
-
-    return response.json();
-  }
-
-  // Update report status
-  async updateStatus(reportId: string, newStatus: 'searching' | 'found' | 'resolved'): Promise<LostPerson> {
-    const response = await fetch(`${this.baseUrl}/${reportId}/status?new_status=${newStatus}`, {
-      method: 'PATCH',
+    const response = await fetch(this.baseUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
     if (!response.ok) {
-      throw new Error('Failed to update report status');
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     return response.json();
   }
 
-  // Get active search cases for an event
-  async getActiveSearches(eventId: string): Promise<LostPerson[]> {
-    const response = await fetch(`${this.baseUrl}/search/active?event_id=${eventId}`);
+  // API 4: Get reports by event (GET /lost-persons/?event_id={{event_id}})
+  async getReportsByEvent(eventId: string): Promise<LostPerson[]> {
+    const response = await fetch(`${this.baseUrl}?event_id=${eventId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch active searches');
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     return response.json();
   }
 
-  // Get event statistics
+  // API 5: Get reports by status (GET /lost-persons/?status=searching)
+  async getReportsByStatus(status: string): Promise<LostPerson[]> {
+    const response = await fetch(`${this.baseUrl}?status=${status}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  // API 6: Get reports by priority (GET /lost-persons/?priority=critical)
+  async getReportsByPriority(priority: string): Promise<LostPerson[]> {
+    const response = await fetch(`${this.baseUrl}?priority=${priority}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  // API 7: Get single report by ID (GET /lost-persons/{{report_id}})
+  async getReportById(reportId: string): Promise<LostPerson> {
+    const response = await fetch(`${this.baseUrl}/${reportId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  // API 8 & 9: Update status (PATCH /lost-persons/{{report_id}}/status?new_status=searching)
+  async updateStatus(
+    reportId: string,
+    newStatus: 'searching' | 'found' | 'resolved'
+  ): Promise<LostPerson> {
+    const response = await fetch(`${this.baseUrl}/${reportId}/status?new_status=${newStatus}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Failed to update status' }));
+      throw new Error(error.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  // API 10: Get active reports (GET /lost-persons/search/active?event_id={{event_id}})
+  async getActiveReports(eventId: string): Promise<LostPerson[]> {
+    const response = await fetch(`${this.baseUrl}/search/active?event_id=${eventId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  // API 11: Get event statistics (GET /lost-persons/stats/event/{{event_id}})
   async getEventStats(eventId: string): Promise<LostPersonStats> {
-    const response = await fetch(`${this.baseUrl}/stats/event/${eventId}`);
+    const response = await fetch(`${this.baseUrl}/stats/event/${eventId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch event statistics');
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     return response.json();
   }
 
-  // Upload photo for a report
-  async uploadPhoto(reportId: string, file: File): Promise<LostPerson> {
+  // API 12: Upload photo (POST /lost-persons/{{report_id}}/photo)
+  async uploadPhoto(reportId: string, file: File): Promise<PhotoUploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
 
     const response = await fetch(`${this.baseUrl}/${reportId}/photo`, {
       method: 'POST',
       body: formData,
+      // Note: Don't set Content-Type header - browser will set it automatically with boundary
     });
 
     if (!response.ok) {
-      throw new Error('Failed to upload photo');
+      const error = await response.json().catch(() => ({ message: 'Failed to upload photo' }));
+      throw new Error(error.message || `HTTP error! status: ${response.status}`);
     }
 
     return response.json();
   }
 
-  // Delete photo from a report
-  async deletePhoto(reportId: string): Promise<void> {
+  // API 13: Delete photo (DELETE /lost-persons/{{report_id}}/photo)
+  async deletePhoto(reportId: string): Promise<{ message: string }> {
     const response = await fetch(`${this.baseUrl}/${reportId}/photo`, {
       method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
     if (!response.ok) {
-      throw new Error('Failed to delete photo');
+      const error = await response.json().catch(() => ({ message: 'Failed to delete photo' }));
+      throw new Error(error.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  // Helper method to get full photo URL
+  getPhotoUrl(photoPath: string | null): string | null {
+    if (!photoPath) return null;
+    // If the path already includes the full URL, return it
+    if (photoPath.startsWith('http')) return photoPath;
+    // Otherwise, prepend the base URL (without /lost-persons)
+    // Remove any leading slash from photoPath to avoid double slashes
+    const cleanPath = photoPath.startsWith('/') ? photoPath : `/${photoPath}`;
+    return `${API_BASE_URL}${cleanPath}`;
+  }
+
+  // Check if photo exists (optional - use for validation)
+  async checkPhotoExists(photoUrl: string): Promise<boolean> {
+    try {
+      const response = await fetch(photoUrl, { method: 'HEAD' });
+      return response.ok;
+    } catch {
+      return false;
     }
   }
 }
+
+
 
 export const lostPersonsService = new LostPersonsService();

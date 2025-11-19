@@ -10,6 +10,22 @@ export interface EmergencyExit {
   created_at: string;
 }
 
+export interface Event {
+  id: string;
+  name: string;
+  description: string;
+  start_time: string;
+  end_time: string;
+  location: string;
+  capacity: number;
+  attendees_count: number;
+  areas: any[];
+  date: string | null;
+  organizer_id: string;
+  status: 'upcoming' | 'live' | 'completed';
+  created_at: string;
+}
+
 export interface CreateEmergencyExitPayload {
   event_id: string;
   exit_name: string;
@@ -146,6 +162,25 @@ class EmergencyExitsAPI {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to delete emergency exit');
     }
+  }
+
+  /**
+   * Get all events
+   */
+  async getAllEvents(): Promise<Event[]> {
+    const response = await fetch(`${API_BASE_URL}/events/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to fetch events');
+    }
+
+    return response.json();
   }
 }
 

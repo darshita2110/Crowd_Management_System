@@ -1,3 +1,4 @@
+// src/services/eventService.ts
 import { API_BASE_URL } from '../utils/constants';
 
 export interface Area {
@@ -51,7 +52,6 @@ export interface DeleteResponse {
 export const createEvent = async (eventData: EventPayload): Promise<EventResponse> => {
   try {
     console.log('Creating event with data:', JSON.stringify(eventData, null, 2));
-    console.log('API URL:', `${API_BASE_URL}/events/`);
     
     const response = await fetch(`${API_BASE_URL}/events/`, {
       method: 'POST',
@@ -62,9 +62,7 @@ export const createEvent = async (eventData: EventPayload): Promise<EventRespons
     });
 
     console.log('Response status:', response.status);
-    console.log('Response ok:', response.ok);
 
-    // Try to get response body regardless of status
     let data;
     try {
       data = await response.json();
@@ -84,7 +82,6 @@ export const createEvent = async (eventData: EventPayload): Promise<EventRespons
     return data;
   } catch (error: any) {
     console.error('Create event error:', error);
-    // Make sure we're throwing a proper Error object with a message
     if (error instanceof Error) {
       throw error;
     }
@@ -95,7 +92,7 @@ export const createEvent = async (eventData: EventPayload): Promise<EventRespons
 // Get all events
 export const getAllEvents = async (): Promise<EventResponse[]> => {
   try {
-    console.log('Fetching events from:', `${API_BASE_URL}/events/`);
+    console.log('Fetching all events from:', `${API_BASE_URL}/events/`);
     
     const response = await fetch(`${API_BASE_URL}/events/`);
     
@@ -108,7 +105,7 @@ export const getAllEvents = async (): Promise<EventResponse[]> => {
     }
 
     const data = await response.json();
-    console.log('Events fetched:', data);
+    console.log('Events fetched successfully:', data.length, 'events');
     return data;
   } catch (error) {
     console.error('Fetch events error:', error);
@@ -118,52 +115,92 @@ export const getAllEvents = async (): Promise<EventResponse[]> => {
 
 // Get events by status
 export const getEventsByStatus = async (status: 'upcoming' | 'live' | 'completed'): Promise<EventResponse[]> => {
-  const response = await fetch(`${API_BASE_URL}/events/?status=${status}`);
+  try {
+    console.log('Fetching events by status:', status);
+    
+    const response = await fetch(`${API_BASE_URL}/events/?status=${status}`);
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch events by status');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || errorData.message || 'Failed to fetch events by status');
+    }
+
+    const data = await response.json();
+    console.log(`Events with status '${status}' fetched:`, data.length, 'events');
+    return data;
+  } catch (error) {
+    console.error('Fetch events by status error:', error);
+    throw error;
   }
-
-  return response.json();
 };
 
 // Get events by organizer
 export const getEventsByOrganizer = async (organizerId: string): Promise<EventResponse[]> => {
-  const response = await fetch(`${API_BASE_URL}/events/?organizer_id=${organizerId}`);
+  try {
+    console.log('Fetching events by organizer:', organizerId);
+    
+    const response = await fetch(`${API_BASE_URL}/events/?organizer_id=${organizerId}`);
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch events by organizer');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || errorData.message || 'Failed to fetch events by organizer');
+    }
+
+    const data = await response.json();
+    console.log(`Events for organizer '${organizerId}' fetched:`, data.length, 'events');
+    return data;
+  } catch (error) {
+    console.error('Fetch events by organizer error:', error);
+    throw error;
   }
-
-  return response.json();
 };
 
 // Get a single event by ID
 export const getEventById = async (eventId: string): Promise<EventResponse> => {
-  const response = await fetch(`${API_BASE_URL}/events/${eventId}`);
+  try {
+    console.log('Fetching event by ID:', eventId);
+    
+    const response = await fetch(`${API_BASE_URL}/events/${eventId}`);
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch event');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || errorData.message || 'Failed to fetch event');
+    }
+
+    const data = await response.json();
+    console.log('Event fetched:', data);
+    return data;
+  } catch (error) {
+    console.error('Fetch event by ID error:', error);
+    throw error;
   }
-
-  return response.json();
 };
 
 // Update an event
 export const updateEvent = async (eventId: string, eventData: EventPayload): Promise<EventResponse> => {
-  const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(eventData),
-  });
+  try {
+    console.log('Updating event:', eventId, eventData);
+    
+    const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(eventData),
+    });
 
-  if (!response.ok) {
-    throw new Error('Failed to update event');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || errorData.message || 'Failed to update event');
+    }
+
+    const data = await response.json();
+    console.log('Event updated:', data);
+    return data;
+  } catch (error) {
+    console.error('Update event error:', error);
+    throw error;
   }
-
-  return response.json();
 };
 
 // Update event status
@@ -171,26 +208,46 @@ export const updateEventStatus = async (
   eventId: string,
   status: 'live' | 'completed'
 ): Promise<StatusUpdateResponse> => {
-  const response = await fetch(`${API_BASE_URL}/events/${eventId}/status?status=${status}`, {
-    method: 'PATCH',
-  });
+  try {
+    console.log('Updating event status:', eventId, 'to', status);
+    
+    const response = await fetch(`${API_BASE_URL}/events/${eventId}/status?status=${status}`, {
+      method: 'PATCH',
+    });
 
-  if (!response.ok) {
-    throw new Error('Failed to update event status');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || errorData.message || 'Failed to update event status');
+    }
+
+    const data = await response.json();
+    console.log('Event status updated:', data);
+    return data;
+  } catch (error) {
+    console.error('Update event status error:', error);
+    throw error;
   }
-
-  return response.json();
 };
 
 // Delete an event
 export const deleteEvent = async (eventId: string): Promise<DeleteResponse> => {
-  const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
-    method: 'DELETE',
-  });
+  try {
+    console.log('Deleting event:', eventId);
+    
+    const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
+      method: 'DELETE',
+    });
 
-  if (!response.ok) {
-    throw new Error('Failed to delete event');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || errorData.message || 'Failed to delete event');
+    }
+
+    const data = await response.json();
+    console.log('Event deleted:', data);
+    return data;
+  } catch (error) {
+    console.error('Delete event error:', error);
+    throw error;
   }
-
-  return response.json();
 };

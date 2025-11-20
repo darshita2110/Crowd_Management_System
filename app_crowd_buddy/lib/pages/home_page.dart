@@ -1,5 +1,7 @@
+import 'dart:convert';  // ✅ ADDED
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';  // ✅ ADDED
 import '../widgets/banner_carousel.dart';
 import '../widgets/quick_tiles.dart';
 import 'event_list_page.dart';
@@ -7,25 +9,19 @@ import 'crowd_dashboard.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback? onThemeToggle;
-
   const HomePage({super.key, this.onThemeToggle});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
+class _HomePageState extends State<HomePage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
-  // Mock data for previously joined events
-  final List<Map<String, String>> previousEvents = [
-    {'name': 'TechFest 2024', 'date': 'Oct 15, 2024', 'location': 'Mumbai', 'id': '1'},
-    {'name': 'MusicFest 2024', 'date': 'Sep 20, 2024', 'location': 'Bangalore', 'id': '2'},
-  ];
-
-  // Track last opened event (in real app, this would be saved in local storage)
-  static String? lastOpenedEventId;
+  // ✅ MODIFIED: Track last visited event from SharedPreferences
+  Map<String, dynamic>? _lastVisitedEvent;
 
   @override
   void initState() {
@@ -34,10 +30,31 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+    _fadeAnimation = Tween(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
     _animationController.forward();
+
+    // ✅ ADDED: Load last visited event
+    _loadLastVisitedEvent();
+  }
+
+  // ✅ ADDED: Load last visited event from SharedPreferences
+  Future<void> _loadLastVisitedEvent() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final eventHistory = prefs.getStringList('event_history') ?? [];
+
+      if (eventHistory.isNotEmpty) {
+        final lastEventJson = jsonDecode(eventHistory.first);
+        setState(() {
+          _lastVisitedEvent = lastEventJson;
+        });
+        print('📌 Loaded last visited event: ${lastEventJson['name']}');
+      }
+    } catch (e) {
+      print('❌ Error loading last visited event: $e');
+    }
   }
 
   @override
@@ -46,27 +63,27 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     super.dispose();
   }
 
-  void _openEventDashboard(String eventId, String eventName) {
-    lastOpenedEventId = eventId;
-    Navigator.pushNamed(
-      context,
-      CrowdDashboard.route,
-      arguments: {'eventId': eventId, 'eventName': eventName},
-    );
+  // ✅ MODIFIED: Open event dashboard and save to SharedPreferences
+  Future<void> _openEventDashboard(Map<String, dynamic> event) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('event_id', event['id']);
+      await prefs.setString('event_name', event['name']);
+
+      print('✅ Opening event: ${event['name']} (${event['id']})');
+
+      if (mounted) {
+        Navigator.pushNamed(context, CrowdDashboard.route);
+      }
+    } catch (e) {
+      print('❌ Error opening event: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-
-    // Get the last opened event
-    final lastEvent = lastOpenedEventId != null
-        ? previousEvents.firstWhere(
-          (event) => event['id'] == lastOpenedEventId,
-      orElse: () => previousEvents.first,
-    )
-        : previousEvents.first;
 
     return Scaffold(
       body: CustomScrollView(
@@ -181,7 +198,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       child: TextField(
                         decoration: InputDecoration(
                           hintText: 'Search events near you...',
-                          prefixIcon: const Icon(Icons.search, color: Colors.teal),
+                          prefixIcon:
+                          const Icon(Icons.search, color: Colors.teal),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
                             borderSide: BorderSide.none,
@@ -250,8 +268,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
                   const SizedBox(height: 32),
 
-                  // Current Event Dashboard
-                  if (lastOpenedEventId != null) ...[
+                  // ✅ MODIFIED: Only show if there's a last visited event
+                  if (_lastVisitedEvent != null) ...[
+                    // Previously Visited Event Section
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Row(
@@ -261,14 +280,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             height: 24,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [Colors.teal, Colors.cyan],
+                                colors: [Colors.purple, Colors.deepPurple],
                               ),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            'Current Event',
+                            'Previously Visited Event',
                             style: theme.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                               letterSpacing: 0.5,
@@ -277,7 +296,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                         ],
                       ),
                     ),
+
                     const SizedBox(height: 16),
+
+                    // Last Visited Event Card
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Container(
@@ -288,17 +310,18 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             end: Alignment.bottomRight,
                             colors: isDark
                                 ? [
-                              Colors.teal.shade800.withOpacity(0.4),
-                              Colors.cyan.shade900.withOpacity(0.3),
+                              Colors.purple.shade800.withOpacity(0.4),
+                              Colors.deepPurple.shade900
+                                  .withOpacity(0.3),
                             ]
                                 : [
-                              Colors.teal.shade100,
-                              Colors.cyan.shade100,
+                              Colors.purple.shade100,
+                              Colors.deepPurple.shade100,
                             ],
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.teal.withOpacity(0.3),
+                              color: Colors.purple.withOpacity(0.3),
                               blurRadius: 15,
                               offset: const Offset(0, 6),
                             ),
@@ -308,10 +331,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           color: Colors.transparent,
                           child: InkWell(
                             borderRadius: BorderRadius.circular(16),
-                            onTap: () => _openEventDashboard(
-                              lastEvent['id']!,
-                              lastEvent['name']!,
-                            ),
+                            onTap: () => _openEventDashboard(_lastVisitedEvent!),
                             child: Padding(
                               padding: const EdgeInsets.all(20.0),
                               child: Column(
@@ -324,21 +344,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                         decoration: BoxDecoration(
                                           gradient: LinearGradient(
                                             colors: [
-                                              Colors.teal.shade400,
-                                              Colors.cyan.shade500,
+                                              Colors.purple.shade600,
+                                              Colors.deepPurple.shade600,
                                             ],
                                           ),
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                          BorderRadius.circular(12),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.teal.withOpacity(0.4),
+                                              color: Colors.purple
+                                                  .withOpacity(0.4),
                                               blurRadius: 8,
                                               offset: const Offset(0, 4),
                                             ),
                                           ],
                                         ),
                                         child: const Icon(
-                                          Icons.dashboard,
+                                          Icons.event,
                                           color: Colors.white,
                                           size: 32,
                                         ),
@@ -346,19 +368,26 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                       const SizedBox(width: 16),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              lastEvent['name']!,
-                                              style: theme.textTheme.titleLarge?.copyWith(
+                                              _lastVisitedEvent!['name'] ??
+                                                  'Event',
+                                              style: theme.textTheme.titleLarge
+                                                  ?.copyWith(
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
                                             const SizedBox(height: 4),
                                             Text(
-                                              '${lastEvent['location']} • ${lastEvent['date']}',
-                                              style: theme.textTheme.bodyMedium?.copyWith(
-                                                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                              _lastVisitedEvent!['location'] ??
+                                                  'Location',
+                                              style: theme.textTheme.bodyMedium
+                                                  ?.copyWith(
+                                                color: theme
+                                                    .colorScheme.onSurface
+                                                    .withOpacity(0.7),
                                               ),
                                             ),
                                           ],
@@ -367,13 +396,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                       Container(
                                         padding: const EdgeInsets.all(8),
                                         decoration: BoxDecoration(
-                                          color: Colors.teal.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: Colors.purple.withOpacity(0.2),
+                                          borderRadius:
+                                          BorderRadius.circular(8),
                                         ),
                                         child: const Icon(
                                           Icons.arrow_forward_ios,
                                           size: 16,
-                                          color: Colors.teal,
+                                          color: Colors.purple,
                                         ),
                                       ),
                                     ],
@@ -382,7 +412,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   Text(
                                     'Tap to open event dashboard',
                                     style: theme.textTheme.bodySmall?.copyWith(
-                                      color: Colors.teal,
+                                      color: Colors.purple,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -393,211 +423,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 32),
                   ],
 
-                  // Previously Joined Events Section
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 4,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.teal, Colors.cyan],
-                            ),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Previously Joined Events',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Previous Events List
-                  ...previousEvents.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final event = entry.value;
-                    return TweenAnimationBuilder<double>(
-                      duration: Duration(milliseconds: 400 + (index * 100)),
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      builder: (context, value, child) {
-                        return Transform.translate(
-                          offset: Offset(0, 20 * (1 - value)),
-                          child: Opacity(
-                            opacity: value,
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0,
-                          vertical: 8.0,
-                        ),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: isDark
-                                  ? [
-                                Colors.teal.shade800.withOpacity(0.3),
-                                Colors.cyan.shade900.withOpacity(0.2),
-                              ]
-                                  : [
-                                Colors.teal.shade50,
-                                Colors.cyan.shade50,
-                              ],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.teal.withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(16),
-                              onTap: () => _openEventDashboard(
-                                event['id']!,
-                                event['name']!,
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Colors.teal.shade400,
-                                            Colors.cyan.shade500,
-                                          ],
-                                        ),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: const Icon(
-                                        Icons.event,
-                                        color: Colors.white,
-                                        size: 28,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            event['name']!,
-                                            style: theme.textTheme.titleMedium
-                                                ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Row(
-                                            children: [
-                                              Flexible(
-                                                child: Row(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: [
-                                                    Icon(
-                                                      Icons.calendar_today,
-                                                      size: 14,
-                                                      color: theme.colorScheme.onSurface
-                                                          .withOpacity(0.6),
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Flexible(
-                                                      child: Text(
-                                                        event['date']!,
-                                                        style: theme.textTheme.bodySmall
-                                                            ?.copyWith(
-                                                          color: theme
-                                                              .colorScheme.onSurface
-                                                              .withOpacity(0.6),
-                                                        ),
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Flexible(
-                                                child: Row(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: [
-                                                    Icon(
-                                                      Icons.location_on,
-                                                      size: 14,
-                                                      color: theme.colorScheme.onSurface
-                                                          .withOpacity(0.6),
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Flexible(
-                                                      child: Text(
-                                                        event['location']!,
-                                                        style: theme.textTheme.bodySmall
-                                                            ?.copyWith(
-                                                          color: theme
-                                                              .colorScheme.onSurface
-                                                              .withOpacity(0.6),
-                                                        ),
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.teal.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Icon(
-                                        Icons.arrow_forward_ios,
-                                        size: 16,
-                                        color: Colors.teal,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-
-                  const SizedBox(height: 32),
-
                   // Quick Actions
+
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16.0),
                     child: QuickTilesRow(),

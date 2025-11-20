@@ -1,5 +1,6 @@
+import 'dart:convert';  // ✅ ADDED
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // ✅ ADD THIS LINE
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/event_model.dart';
 import '../services/event_service.dart';
 import 'crowd_dashboard.dart';
@@ -13,7 +14,6 @@ enum EventFilter {
 
 class EventListPage extends StatefulWidget {
   static const route = '/events';
-
   const EventListPage({super.key});
 
   @override
@@ -94,6 +94,49 @@ class _EventListPageState extends State<EventListPage> {
     });
     _loadEvents();
   }
+
+  // ✅ FIXED: Save event to history (using correct Event model fields)
+  Future<void> _saveEventToHistory(
+      SharedPreferences prefs, Event event) async {
+    // Get existing history
+    List<String> eventHistory = prefs.getStringList('event_history') ?? [];
+
+    // Create event JSON string - using available Event fields
+    final eventJson = jsonEncode({
+      'id': event.id,
+      'name': event.name,
+      'status': event.status,
+      'location': event.location,
+      'description': event.description,
+      'attendeesCount': event.attendeesCount,
+      'capacity': event.capacity,
+      'visitedAt': DateTime.now().toIso8601String(),
+    });
+
+    // Remove if already exists (to avoid duplicates)
+    eventHistory.removeWhere((e) {
+      try {
+        final data = jsonDecode(e);
+        return data['id'] == event.id;
+      } catch (_) {
+        return false;
+      }
+    });
+
+    // Add to beginning (most recent first)
+    eventHistory.insert(0, eventJson);
+
+    // Keep only last 5 events
+    if (eventHistory.length > 5) {
+      eventHistory = eventHistory.sublist(0, 5);
+    }
+
+    // Save back to SharedPreferences
+    await prefs.setStringList('event_history', eventHistory);
+
+    print('💾 Saved event to history. Total history: ${eventHistory.length}');
+  }
+
 
   Color _getTypeColor(String type) {
     switch (type) {
@@ -243,7 +286,6 @@ class _EventListPageState extends State<EventListPage> {
                 ),
                 child: TextField(
                   onChanged: _filterEvents,
-                  controller: TextEditingController(text: _searchQuery),
                   decoration: InputDecoration(
                     hintText: 'Search events...',
                     prefixIcon: const Icon(Icons.search, color: Colors.teal),
@@ -334,7 +376,7 @@ class _EventListPageState extends State<EventListPage> {
 
                     return TweenAnimationBuilder(
                       duration: Duration(milliseconds: 300 + (index * 50)),
-                      tween: Tween<double>(begin: 0.0, end: 1.0),
+                      tween: Tween(begin: 0.0, end: 1.0),
                       builder: (context, value, child) {
                         return Transform.translate(
                           offset: Offset(0, 20 * (1 - value)),
@@ -374,31 +416,39 @@ class _EventListPageState extends State<EventListPage> {
                             color: Colors.transparent,
                             child: InkWell(
                               borderRadius: BorderRadius.circular(20),
-                              // ✅ ONLY THIS SECTION IS MODIFIED
+                              // ✅ MODIFIED: Added event history saving
                               onTap: () async {
                                 try {
-                                  // Save event_id to SharedPreferences
-                                  final prefs = await SharedPreferences.getInstance();
-                                  await prefs.setString('current_event_id', event.id); // for medical page
-                                  await prefs.setString('current_event_name', event.name);
-                                  await prefs.setString('event_id', event.id); // for lost person page
-                                  // Navigate to dashboard
-                                  if (context.mounted) {
+                                  final prefs =
+                                  await SharedPreferences.getInstance();
+                                  await prefs.setString(
+                                      'current_event_id', event.id);
+                                  await prefs.setString(
+                                      'current_event_name', event.name);
+                                  await prefs.setString('event_id', event.id);
+                                  await prefs.setString(
+                                      'event_name', event.name);
+
+                                  // ✅ ADDED: Save to event history
+                                  await _saveEventToHistory(prefs, event);
+
+                                  print('✅ Saved event: ${event.name} (${event.id})');
+
+                                  if (mounted) {
                                     Navigator.pushNamed(
                                       context,
                                       CrowdDashboard.route,
                                     );
                                   }
                                 } catch (e) {
-                                  // Show error if saving fails
-                                  if (context.mounted) {
+                                  print('❌ Error saving event: $e');
+                                  if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(content: Text('Error: $e')),
                                     );
                                   }
                                 }
                               },
-                              // ✅ END OF MODIFIED SECTION
                               child: Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Row(
@@ -413,13 +463,16 @@ class _EventListPageState extends State<EventListPage> {
                                             gradient: LinearGradient(
                                               colors: [
                                                 _getTypeColor(eventType),
-                                                _getTypeColor(eventType).withOpacity(0.7),
+                                                _getTypeColor(eventType)
+                                                    .withOpacity(0.7),
                                               ],
                                             ),
-                                            borderRadius: BorderRadius.circular(16),
+                                            borderRadius:
+                                            BorderRadius.circular(16),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: _getTypeColor(eventType).withOpacity(0.4),
+                                                color: _getTypeColor(eventType)
+                                                    .withOpacity(0.4),
                                                 blurRadius: 8,
                                                 offset: const Offset(0, 4),
                                               ),
@@ -432,7 +485,8 @@ class _EventListPageState extends State<EventListPage> {
                                           ),
                                         ),
                                         // Live Indicator
-                                        if (event.status.toLowerCase() == 'live')
+                                        if (event.status.toLowerCase() ==
+                                            'live')
                                           Positioned(
                                             top: 0,
                                             right: 0,
@@ -443,7 +497,8 @@ class _EventListPageState extends State<EventListPage> {
                                                 shape: BoxShape.circle,
                                                 boxShadow: [
                                                   BoxShadow(
-                                                    color: Colors.red.withOpacity(0.6),
+                                                    color: Colors.red
+                                                        .withOpacity(0.6),
                                                     blurRadius: 8,
                                                     spreadRadius: 2,
                                                   ),
@@ -463,41 +518,48 @@ class _EventListPageState extends State<EventListPage> {
                                     // Event Details
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                         children: [
                                           Row(
                                             children: [
                                               Expanded(
                                                 child: Text(
                                                   event.name,
-                                                  style: theme.textTheme.titleMedium?.copyWith(
+                                                  style: theme
+                                                      .textTheme.titleMedium
+                                                      ?.copyWith(
                                                     fontWeight: FontWeight.bold,
                                                     letterSpacing: 0.3,
                                                   ),
                                                 ),
                                               ),
                                               Container(
-                                                padding: const EdgeInsets.symmetric(
+                                                padding:
+                                                const EdgeInsets.symmetric(
                                                   horizontal: 8,
                                                   vertical: 4,
                                                 ),
                                                 decoration: BoxDecoration(
-                                                  color: _getTypeColor(eventType).withOpacity(0.2),
-                                                  borderRadius: BorderRadius.circular(8),
+                                                  color: _getTypeColor(
+                                                      eventType)
+                                                      .withOpacity(0.2),
+                                                  borderRadius:
+                                                  BorderRadius.circular(8),
                                                 ),
                                                 child: Text(
                                                   eventType,
                                                   style: TextStyle(
                                                     fontSize: 11,
                                                     fontWeight: FontWeight.bold,
-                                                    color: _getTypeColor(eventType),
+                                                    color:
+                                                    _getTypeColor(eventType),
                                                   ),
                                                 ),
                                               ),
                                             ],
                                           ),
                                           const SizedBox(height: 4),
-
                                           // Status Badge
                                           Container(
                                             padding: const EdgeInsets.symmetric(
@@ -505,18 +567,25 @@ class _EventListPageState extends State<EventListPage> {
                                               vertical: 2,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: _getStatusColor(event.status).withOpacity(0.2),
-                                              borderRadius: BorderRadius.circular(6),
+                                              color: _getStatusColor(
+                                                  event.status)
+                                                  .withOpacity(0.2),
+                                              borderRadius:
+                                              BorderRadius.circular(6),
                                             ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                if (event.status.toLowerCase() == 'live')
+                                                if (event.status.toLowerCase() ==
+                                                    'live')
                                                   Container(
                                                     width: 6,
                                                     height: 6,
-                                                    margin: const EdgeInsets.only(right: 4),
-                                                    decoration: const BoxDecoration(
+                                                    margin:
+                                                    const EdgeInsets.only(
+                                                        right: 4),
+                                                    decoration:
+                                                    const BoxDecoration(
                                                       color: Colors.red,
                                                       shape: BoxShape.circle,
                                                     ),
@@ -526,48 +595,60 @@ class _EventListPageState extends State<EventListPage> {
                                                   style: TextStyle(
                                                     fontSize: 10,
                                                     fontWeight: FontWeight.bold,
-                                                    color: _getStatusColor(event.status),
+                                                    color: _getStatusColor(
+                                                        event.status),
                                                   ),
                                                 ),
                                               ],
                                             ),
                                           ),
                                           const SizedBox(height: 8),
-
                                           Row(
                                             children: [
                                               Icon(
                                                 Icons.location_on,
                                                 size: 14,
-                                                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                                color: theme
+                                                    .colorScheme.onSurface
+                                                    .withOpacity(0.6),
                                               ),
                                               const SizedBox(width: 4),
                                               Text(
                                                 event.location,
-                                                style: theme.textTheme.bodySmall?.copyWith(
-                                                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                                style: theme
+                                                    .textTheme.bodySmall
+                                                    ?.copyWith(
+                                                  color: theme
+                                                      .colorScheme.onSurface
+                                                      .withOpacity(0.6),
                                                 ),
                                               ),
                                               const SizedBox(width: 12),
                                               Icon(
                                                 Icons.calendar_today,
                                                 size: 14,
-                                                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                                color: theme
+                                                    .colorScheme.onSurface
+                                                    .withOpacity(0.6),
                                               ),
                                               const SizedBox(width: 4),
                                               Expanded(
                                                 child: Text(
                                                   event.getFormattedDate(),
-                                                  style: theme.textTheme.bodySmall?.copyWith(
-                                                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                                  style: theme
+                                                      .textTheme.bodySmall
+                                                      ?.copyWith(
+                                                    color: theme
+                                                        .colorScheme.onSurface
+                                                        .withOpacity(0.6),
                                                   ),
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                  TextOverflow.ellipsis,
                                                 ),
                                               ),
                                             ],
                                           ),
                                           const SizedBox(height: 8),
-
                                           Row(
                                             children: [
                                               const Icon(
@@ -578,7 +659,8 @@ class _EventListPageState extends State<EventListPage> {
                                               const SizedBox(width: 4),
                                               Text(
                                                 '${event.attendeesCount}/${event.capacity} attendees',
-                                                style: theme.textTheme.bodySmall?.copyWith(
+                                                style: theme.textTheme.bodySmall
+                                                    ?.copyWith(
                                                   color: Colors.teal,
                                                   fontWeight: FontWeight.w600,
                                                 ),
@@ -602,7 +684,8 @@ class _EventListPageState extends State<EventListPage> {
                                         borderRadius: BorderRadius.circular(12),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.teal.withOpacity(0.4),
+                                            color:
+                                            Colors.teal.withOpacity(0.4),
                                             blurRadius: 8,
                                             offset: const Offset(0, 4),
                                           ),
@@ -665,7 +748,6 @@ class _EventListPageState extends State<EventListPage> {
           ),
         ],
       ),
-
       // Floating Refresh Button
       floatingActionButton: FloatingActionButton(
         onPressed: _loadEvents,

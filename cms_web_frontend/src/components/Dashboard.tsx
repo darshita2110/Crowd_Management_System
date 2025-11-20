@@ -1,8 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { LayoutDashboard, Users, AlertTriangle, Activity, MessageSquare, LogOut, Calendar, Droplets } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
-import { Event } from '../types';
 import EventsPage from './pages/EventsPage';
 import EventDashboard from './pages/EventDashboard';
 import LostPersonsPage from './pages/LostPersonsPage';
@@ -18,22 +16,6 @@ export default function Dashboard() {
   const { organizer, logout } = useAuth();
   const [currentPage, setCurrentPage] = useState<Page>('events');
   const [selectedEvent, setSelectedEvent] = useState<EventResponse | null>(null);
-  const [events, setEvents] = useState<Event[]>([]);
-
-  useEffect(() => {
-    loadEvents();
-  }, []);
-
-  const loadEvents = async () => {
-    const { data } = await supabase
-      .from('events')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (data) {
-      setEvents(data);
-    }
-  };
 
   const handleEventSelect = (event: EventResponse) => {
     setSelectedEvent(event);
@@ -140,7 +122,7 @@ export default function Dashboard() {
           )}
 
           {currentPage === 'feedback' && (
-            <FeedbackPage events={events} />
+            <FeedbackPage />
           )}
         </main>
       </div>

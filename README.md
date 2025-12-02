@@ -109,8 +109,7 @@ Access the organizer dashboard to:
 - **Multiple Facility Types**:
   - 🚻 Washroom facilities (gender-specific)
   - 🏥 Medical centers
-  - 🍔 Food courts
-  - 🏨 Hotels
+  - 😔 Track lost person
   - 🚪 Emergency exits
 
 - **Availability Tracking**: Real-time facility status (Available, Occupied, Maintenance)
